@@ -5,7 +5,7 @@ export interface Movie {
   title: string
   description: string
   genre: string[]
-  language: string[]
+  language: string
   duration: number
   rating: string
   imdbRating: number
@@ -17,8 +17,6 @@ export interface Movie {
   crew: Array<{ name: string; role: string; image?: string }>
   formats: string[]
   status: 'upcoming' | 'running' | 'ended'
-  isActive: boolean
-}
 
 interface MoviesResponse {
   movies: Movie[]

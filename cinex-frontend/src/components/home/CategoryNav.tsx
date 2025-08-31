@@ -9,8 +9,8 @@ const CategoryNav = () => {
     { path: '/events', icon: Calendar, label: 'Events' },
     { path: '/search', icon: Search, label: 'Search' },
     { path: '/stream', icon: Play, label: 'Stream' },
-    { path: '/profile', icon: User, label: 'Live Concerts' },
-        { path: '/profile', icon: User, label: 'Live Concerts' },
+    { path: '/profile', icon: User, label: 'Live' },
+        { path: '/profile', icon: User, label: 'Concerts' },
     { path: '/profile', icon: User, label: 'Plays' },
     { path: '/profile', icon: User, label: 'Sports' },
 
