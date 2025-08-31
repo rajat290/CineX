@@ -9,7 +9,7 @@
 
 A modern, full-stack movie ticket booking platform built with React, Node.js, Express, and MongoDB. Experience seamless movie browsing, real-time seat selection, and secure payments with CineX.
 
-![CineX Banner](https://via.placeholder.com/800x200/1a1a2e/00d4ff?text=CineX+Movie+Booking+System)
+![CineX Banner](./image%20copy.png)
 
 ## 🌟 Features
 
