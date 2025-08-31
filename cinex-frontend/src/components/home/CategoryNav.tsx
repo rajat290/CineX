@@ -1,13 +1,46 @@
-// Example for Events.tsx
-const Events = () => {
+import { Link, useLocation } from 'react-router-dom'
+import { Film, Calendar, Search, User, Play } from 'lucide-react'
+
+const CategoryNav = () => {
+  const location = useLocation()
+
+  const navItems = [
+    { path: '/', icon: Film, label: 'Movies' },
+    { path: '/events', icon: Calendar, label: 'Events' },
+    { path: '/search', icon: Search, label: 'Search' },
+    { path: '/stream', icon: Play, label: 'Stream' },
+    { path: '/profile', icon: User, label: 'Live Concerts' },
+        { path: '/profile', icon: User, label: 'Live Concerts' },
+    { path: '/profile', icon: User, label: 'Plays' },
+    { path: '/profile', icon: User, label: 'Sports' },
+
+  ]
+
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-6">Events</h1>
-        <p className="text-gray-400">Events page coming soon...</p>
+    <nav className="bg-gray-800 rounded-lg p-4 mb-8">
+      <div className="flex flex-wrap gap-4 justify-center">
+        {navItems.map((item) => {
+          const Icon = item.icon
+          const isActive = location.pathname === item.path
+
+          return (
+            <Link
+              key={item.path}
+              to={item.path}
+              className={`flex items-center gap-2 px-4 py-2 rounded-lg transition-colors ${
+                isActive
+                  ? 'bg-primary-600 text-white'
+                  : 'text-gray-300 hover:bg-gray-700 hover:text-white'
+              }`}
+            >
+              <Icon className="w-5 h-5" />
+              <span className="font-medium">{item.label}</span>
+            </Link>
+          )
+        })}
       </div>
-    </div>
+    </nav>
   )
 }
 
-export default Events
+export default CategoryNav
