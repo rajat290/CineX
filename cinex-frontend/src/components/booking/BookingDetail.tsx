@@ -1,6 +1,5 @@
 import React, { useState } from 'react'
-import { Calendar, MapPin, Clock, Users, Download, ArrowLeft, QrCode, CreditCard } from 'lucide-react'
-import { bookingService } from '../../services/bookingService'
+import { Calendar, MapPin, Clock, Download, ArrowLeft, QrCode } from 'lucide-react'
 import jsPDF from 'jspdf'
 import html2canvas from 'html2canvas'
 
@@ -13,13 +12,19 @@ interface Booking {
   }
   theatre: {
     name: string
-    address: string
+    address: string | {
+      street: string
+      area: string
+      city: string
+      state: string
+      pincode: string
+    }
   }
   show: {
     date: string
     showTime: string
-    language: string
-    format: string
+    language: string | object
+    format: string | object
   }
   seats: Array<{
     seatNumber: string
@@ -180,7 +185,14 @@ const BookingDetail: React.FC<BookingDetailProps> = ({ booking, onBack }) => {
                 </div>
                 <div className="flex items-center space-x-2">
                   <span className="font-medium">Address:</span>
-                  <span>{booking.theatre?.address}</span>
+                  <span>
+                    {typeof booking.theatre?.address === 'string'
+                      ? booking.theatre.address
+                      : typeof booking.theatre?.address === 'object'
+                      ? `${booking.theatre.address.street || ''}, ${booking.theatre.address.area || ''}, ${booking.theatre.address.city || ''}, ${booking.theatre.address.state || ''} ${booking.theatre.address.pincode || ''}`.trim()
+                      : 'Address not available'
+                    }
+                  </span>
                 </div>
                 <div className="flex items-center space-x-2">
                   <Calendar className="w-4 h-4" />
@@ -193,13 +205,13 @@ const BookingDetail: React.FC<BookingDetailProps> = ({ booking, onBack }) => {
                 {booking.show?.language && (
                   <div className="flex items-center space-x-2">
                     <span className="font-medium">Language:</span>
-                    <span>{booking.show.language}</span>
+                    <span>{typeof booking.show.language === 'string' ? booking.show.language : JSON.stringify(booking.show.language)}</span>
                   </div>
                 )}
                 {booking.show?.format && (
                   <div className="flex items-center space-x-2">
                     <span className="font-medium">Format:</span>
-                    <span>{booking.show.format}</span>
+                    <span>{typeof booking.show.format === 'string' ? booking.show.format : JSON.stringify(booking.show.format)}</span>
                   </div>
                 )}
               </div>

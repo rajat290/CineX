@@ -22,6 +22,9 @@ exports.getRecentSearches = async (req, res) => {
       return res.json([]); // No user, return empty
     }
     const recentSearches = await RecentSearch.find({ userId }).sort({ searchedAt: -1 }).limit(10);
+    if (!Array.isArray(recentSearches)) {
+      return res.json([]);
+    }
     res.json(recentSearches);
   } catch (error) {
     res.status(500).json({ error: 'Failed to fetch recent searches' });

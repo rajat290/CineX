@@ -57,8 +57,9 @@ const Payment = () => {
                   response.razorpay_payment_id,
                   response.razorpay_signature
                 )
+                console.log('Verification response:', verificationResponse)
 
-                if (verificationResponse.success) {
+                if (verificationResponse.message === 'Payment verified successfully') {
                   setPaymentVerified(true)
                   // Store booking data for confirmation page
                   localStorage.setItem('lastBooking', JSON.stringify(bookingData))
@@ -249,5 +250,8 @@ const Payment = () => {
           {loading ? 'Processing...' : `Pay ₹${bookingData.finalAmount}`}
         </button>
       </div>
+    </div>
+  )
+}
 
 export default Payment

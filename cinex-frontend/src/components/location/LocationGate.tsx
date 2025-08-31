@@ -14,7 +14,7 @@ const LocationGate = () => {
   const [inputValue, setInputValue] = useState('')
   const setLocation = useLocationStore(state => state.setLocation)
   const setDetectedLocationName = useLocationStore(state => state.setDetectedLocationName)
-  const [showError, setShowError] = useState(false)
+
 
   const detectLocation = () => {
     if (navigator.geolocation) {
@@ -38,12 +38,10 @@ const LocationGate = () => {
       if (cities.some(city => city.toLowerCase() === searchCity.toLowerCase())) {
         setLocation(searchCity)
         setDetectedLocationName(searchCity)
-        setShowError(false)
       } else {
         // City not in list, still set location but show error in Home page if no data
         setLocation(searchCity)
         setDetectedLocationName(searchCity)
-        setShowError(true)
       }
     }
   }
@@ -51,7 +49,6 @@ const LocationGate = () => {
   const handleCityClick = (city: string) => {
     setLocation(city)
     setDetectedLocationName(city)
-    setShowError(false)
   }
 
   return (
