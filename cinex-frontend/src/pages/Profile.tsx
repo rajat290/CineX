@@ -1,14 +1,68 @@
-import React from 'react'
+import React, { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useAuthStore } from '../stores/authStore'
+import BookingList from '../components/booking/BookingList'
+import BookingDetail from '../components/booking/BookingDetail'
 
 const Profile = () => {
   const user = useAuthStore((state) => state.user)
   const logout = useAuthStore((state) => state.logout)
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [activeTab, setActiveTab] = useState<'profile' | 'bookings'>('profile')
+  const [selectedBooking, setSelectedBooking] = useState<any>(null)
+
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (tab === 'bookings') {
+      setActiveTab('bookings')
+    }
+  }, [searchParams])
+
+  const handleBookingClick = (booking: any) => {
+    setSelectedBooking(booking)
+  }
+
+  const handleBackToBookings = () => {
+    setSelectedBooking(null)
+  }
 
   if (!user) {
     return (
       <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
         <p>Loading user data...</p>
+      </div>
+    )
+  }
+
+  // Render different content based on active tab
+  if (activeTab === 'bookings') {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white p-6 max-w-4xl mx-auto">
+        {/* Back to Profile Button */}
+        <div className="mb-6">
+          <button
+            onClick={() => {
+              setActiveTab('profile')
+              setSearchParams({})
+            }}
+            className="flex items-center space-x-2 text-gray-300 hover:text-white"
+          >
+            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            <span>Back to Profile</span>
+          </button>
+        </div>
+
+        {/* Bookings Content */}
+        {selectedBooking ? (
+          <BookingDetail booking={selectedBooking} onBack={handleBackToBookings} />
+        ) : (
+          <div>
+            <h1 className="text-3xl font-bold mb-6">My Bookings</h1>
+            <BookingList onBookingClick={handleBookingClick} />
+          </div>
+        )}
       </div>
     )
   }
@@ -104,6 +158,12 @@ const Profile = () => {
         ].map(({ label, desc, icon, badge, badgeNew }) => (
           <div
             key={label}
+            onClick={() => {
+              if (label === 'My Bookings') {
+                setActiveTab('bookings')
+                setSearchParams({ tab: 'bookings' })
+              }
+            }}
             className="flex items-center justify-between bg-gray-800 rounded-lg p-4 cursor-pointer hover:bg-gray-700"
           >
             <div className="flex items-center space-x-4">

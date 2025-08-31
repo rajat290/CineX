@@ -246,8 +246,227 @@ const cancelBooking = async (req, res) => {
   }
 };
 
+const PDFDocument = require('pdfkit');
+const fs = require('fs');
+const path = require('path');
+
+// Download booking PDF
+const downloadBookingPDF = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id)
+      .populate('movie', 'title poster')
+      .populate('theatre', 'name address')
+      .populate('show', 'date showTime language format')
+      .populate('user', 'firstName lastName email phone');
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    // Check if user owns this booking
+    if (booking.user._id.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    // Create PDF document
+    const doc = new PDFDocument({
+      size: 'A4',
+      margin: 50
+    });
+
+    // Set response headers
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename=CineX-Ticket-${booking.bookingId}.pdf`);
+
+    // Pipe PDF to response
+    doc.pipe(res);
+
+    // Add header
+    doc.fillColor('#dc2626')
+       .fontSize(24)
+       .font('Helvetica-Bold')
+       .text('CineX', 50, 50);
+
+    doc.fillColor('#6b7280')
+       .fontSize(12)
+       .font('Helvetica')
+       .text('Movie Ticket', 50, 75);
+
+    // Booking ID
+    doc.fillColor('#000000')
+       .fontSize(14)
+       .font('Helvetica-Bold')
+       .text(`Booking ID: ${booking.bookingId}`, 400, 50);
+
+    // Add a line separator
+    doc.moveTo(50, 100)
+       .lineTo(550, 100)
+       .stroke('#e5e7eb');
+
+    // Movie details
+    doc.fillColor('#000000')
+       .fontSize(18)
+       .font('Helvetica-Bold')
+       .text(booking.movie.title, 50, 120);
+
+    doc.fillColor('#6b7280')
+       .fontSize(12)
+       .font('Helvetica')
+       .text(`${booking.theatre.name} - ${booking.theatre.address}`, 50, 145);
+
+    // Show details
+    const showDate = new Date(booking.showDate).toLocaleDateString('en-IN', {
+      weekday: 'long',
+      day: 'numeric',
+      month: 'long',
+      year: 'numeric'
+    });
+
+    const [hours, minutes] = booking.showTime.split(':');
+    const hour = parseInt(hours);
+    const ampm = hour >= 12 ? 'PM' : 'AM';
+    const displayHour = hour % 12 || 12;
+    const formattedTime = `${displayHour}:${minutes} ${ampm}`;
+
+    doc.fillColor('#000000')
+       .fontSize(14)
+       .font('Helvetica-Bold')
+       .text(`${showDate} at ${formattedTime}`, 50, 170);
+
+    if (booking.show.language) {
+      doc.fillColor('#6b7280')
+         .fontSize(12)
+         .font('Helvetica')
+         .text(`Language: ${booking.show.language}${booking.show.format ? ` | Format: ${booking.show.format}` : ''}`, 50, 190);
+    }
+
+    // Seats section
+    doc.fillColor('#000000')
+       .fontSize(16)
+       .font('Helvetica-Bold')
+       .text('Seats', 50, 220);
+
+    let yPosition = 245;
+    booking.seats.forEach((seat, index) => {
+      doc.fillColor('#000000')
+         .fontSize(12)
+         .font('Helvetica')
+         .text(`Seat ${seat.seatNumber} (${seat.seatType})`, 70, yPosition);
+
+      doc.fillColor('#000000')
+         .fontSize(12)
+         .font('Helvetica')
+         .text(`₹${seat.price}`, 400, yPosition);
+
+      yPosition += 20;
+    });
+
+    // Payment details
+    yPosition += 20;
+    doc.fillColor('#000000')
+       .fontSize(16)
+       .font('Helvetica-Bold')
+       .text('Payment Details', 50, yPosition);
+
+    yPosition += 25;
+    doc.fillColor('#6b7280')
+       .fontSize(12)
+       .font('Helvetica')
+       .text('Ticket Amount:', 70, yPosition);
+    doc.text(`₹${booking.totalAmount}`, 400, yPosition);
+
+    yPosition += 20;
+    doc.fillColor('#6b7280')
+       .fontSize(12)
+       .font('Helvetica')
+       .text('Convenience Fee:', 70, yPosition);
+    doc.text(`₹${booking.convenienceFee}`, 400, yPosition);
+
+    yPosition += 20;
+    doc.fillColor('#6b7280')
+       .fontSize(12)
+       .font('Helvetica')
+       .text('Tax:', 70, yPosition);
+    doc.text(`₹${booking.tax}`, 400, yPosition);
+
+    yPosition += 25;
+    doc.moveTo(50, yPosition)
+       .lineTo(550, yPosition)
+       .stroke('#e5e7eb');
+
+    yPosition += 15;
+    doc.fillColor('#000000')
+       .fontSize(14)
+       .font('Helvetica-Bold')
+       .text('Total Amount:', 70, yPosition);
+    doc.text(`₹${booking.finalAmount}`, 400, yPosition);
+
+    // QR Code placeholder
+    yPosition += 50;
+    doc.fillColor('#6b7280')
+       .fontSize(10)
+       .font('Helvetica')
+       .text('Scan QR code at theatre entrance', 50, yPosition);
+
+    // Draw QR code placeholder
+    doc.rect(400, yPosition - 10, 80, 80)
+       .stroke('#6b7280');
+
+    doc.fillColor('#6b7280')
+       .fontSize(8)
+       .font('Helvetica')
+       .text('QR CODE', 420, yPosition + 30);
+
+    // Footer
+    yPosition += 100;
+    doc.fillColor('#6b7280')
+       .fontSize(10)
+       .font('Helvetica')
+       .text('Important Information:', 50, yPosition);
+
+    yPosition += 20;
+    doc.fillColor('#6b7280')
+       .fontSize(9)
+       .font('Helvetica')
+       .text('• Please arrive at the theatre 30 minutes before show time', 50, yPosition);
+
+    yPosition += 15;
+    doc.fillColor('#6b7280')
+       .fontSize(9)
+       .font('Helvetica')
+       .text('• Carry a valid ID proof along with this ticket', 50, yPosition);
+
+    yPosition += 15;
+    doc.fillColor('#6b7280')
+       .fontSize(9)
+       .font('Helvetica')
+       .text('• No outside food or beverages allowed', 50, yPosition);
+
+    yPosition += 15;
+    doc.fillColor('#6b7280')
+       .fontSize(9)
+       .font('Helvetica')
+       .text('• Tickets are non-transferable and non-refundable', 50, yPosition);
+
+    // Contact info
+    yPosition += 30;
+    doc.fillColor('#6b7280')
+       .fontSize(9)
+       .font('Helvetica')
+       .text('For support, contact us at support@cinemabooker.com', 50, yPosition);
+
+    // Finalize PDF
+    doc.end();
+
+  } catch (error) {
+    console.error('Download PDF error:', error);
+    res.status(500).json({ message: 'Failed to generate PDF' });
+  }
+};
+
 module.exports = {
   createBooking,
   getBookings,
-  cancelBooking
+  cancelBooking,
+  downloadBookingPDF
 };
