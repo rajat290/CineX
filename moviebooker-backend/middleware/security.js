@@ -4,8 +4,8 @@ const cors = require('cors');
 
 // Rate limiting
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 attempts
+  windowMs: 1 * 60 * 1000, // 15 minutes
+  max: 50, // 5 attempts
   message: 'Too many attempts, please try again later',
   skipSuccessfulRequests: true
 });
@@ -20,11 +20,12 @@ const apiLimiter = rateLimit({
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production' 
     ? ['https://yourdomain.com'] 
-    : ['http://localhost:5173', 'http://localhost:3000'],
+    : ['http://localhost:5173', 'http://localhost:5175', 'http://localhost:3000'],
   credentials: true,
   methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization', 'X-Requested-With'],
-  optionsSuccessStatus: 200
+  optionsSuccessStatus: 200,
+  exposedHeaders: ['Access-Control-Allow-Origin']
 };
 
 // Security headers

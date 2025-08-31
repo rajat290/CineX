@@ -68,8 +68,13 @@ const createBooking = async (req, res) => {
     const tax = Math.round((totalAmount + convenienceFee) * 0.18);
     const finalAmount = totalAmount + convenienceFee + tax;
 
+    // Generate bookingId explicitly
+    const count = await Booking.countDocuments();
+    const bookingId = `CINEX${(count + 1).toString().padStart(4, '0')}`;
+
     // Create booking
     const booking = new Booking({
+      bookingId,
       user: req.user._id,
       show: showId,
       movie: show.movie._id,

@@ -1,5 +1,5 @@
-import { useParams, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
+import { useParams, useNavigate } from 'react-router-dom'
 import { paymentService } from '../services/paymentService'
 
 declare global {
@@ -14,6 +14,8 @@ const Payment = () => {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [bookingData, setBookingData] = useState<any>(null)
+  const [paymentMethod, setPaymentMethod] = useState<string>('upi')
+  const [showPaymentOptions, setShowPaymentOptions] = useState<boolean>(true)
 
   useEffect(() => {
     // Get booking data from localStorage or state management
@@ -33,8 +35,8 @@ const Payment = () => {
     setError(null)
 
     try {
-      // Create Razorpay order
-      const orderResponse = await paymentService.createOrder(bookingData._id)
+      // Create Razorpay order with selected payment method
+      const orderResponse = await paymentService.createOrder(bookingData._id, paymentMethod)
 
       const options = {
         key: orderResponse.key,
@@ -84,6 +86,42 @@ const Payment = () => {
     }
   }
 
+  const paymentOptionsUI = () => {
+    return (
+      <div className="min-h-screen bg-gray-900 text-white flex flex-col items-center justify-center p-4">
+        <div className="bg-gray-800 rounded-lg p-8 max-w-md w-full">
+          <h1 className="text-3xl mb-6 text-center">Select Payment Method</h1>
+          <div className="space-y-4">
+            <button
+              onClick={() => setPaymentMethod('upi')}
+              className={`w-full py-3 rounded-lg font-semibold ${paymentMethod === 'upi' ? 'bg-primary-600' : 'bg-gray-700 hover:bg-gray-600'}`}
+            >
+              UPI
+            </button>
+            <button
+              onClick={() => setPaymentMethod('card')}
+              className={`w-full py-3 rounded-lg font-semibold ${paymentMethod === 'card' ? 'bg-primary-600' : 'bg-gray-700 hover:bg-gray-600'}`}
+            >
+              Card
+            </button>
+            <button
+              onClick={() => setPaymentMethod('netbanking')}
+              className={`w-full py-3 rounded-lg font-semibold ${paymentMethod === 'netbanking' ? 'bg-primary-600' : 'bg-gray-700 hover:bg-gray-600'}`}
+            >
+              Net Banking
+            </button>
+          </div>
+          <button
+            onClick={() => setShowPaymentOptions(false)}
+            className="mt-6 w-full bg-primary-600 px-8 py-3 rounded-lg font-semibold hover:bg-primary-700"
+          >
+            Continue to Pay
+          </button>
+        </div>
+      </div>
+    )
+  }
+
   if (!bookingData) {
     return (
       <div className="min-h-screen bg-gray-900 text-white flex items-center justify-center">
@@ -93,6 +131,10 @@ const Payment = () => {
         </div>
       </div>
     )
+  }
+
+  if (showPaymentOptions) {
+    return paymentOptionsUI()
   }
 
   return (

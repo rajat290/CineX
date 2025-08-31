@@ -77,8 +77,8 @@ const SeatSelection = () => {
       // Store booking data in localStorage for payment page
       localStorage.setItem('currentBooking', JSON.stringify(booking))
 
-      // Navigate to payment with booking ID
-      navigate(`/payment/${booking._id}`)
+      // Navigate to payment page
+      navigate('/payment')
     } catch (error) {
       console.error('Error creating booking:', error)
       alert('Failed to create booking. Please try again.')
