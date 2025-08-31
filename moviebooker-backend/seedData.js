@@ -28,7 +28,7 @@ const sampleMovies = [
     title: "Fighter",
     description: "An action-packed aerial drama about Indian Air Force pilots fighting against terrorism.",
     genre: ["Action", "Drama", "Patriotic"],
-    language: ["Hindi", "English"],
+    language: "Hindi",
     duration: 160,
     rating: "UA",
     imdbRating: 8.2,
@@ -53,7 +53,7 @@ const sampleMovies = [
     title: "Teri Baaton Mein Aisa Uljha Jiya",
     description: "A romantic comedy about a man who falls in love with a humanoid robot.",
     genre: ["Romance", "Comedy", "Sci-Fi"],
-    language: ["Hindi"],
+    language: "Hindi",
     duration: 135,
     rating: "UA",
     imdbRating: 7.1,
@@ -76,7 +76,7 @@ const sampleMovies = [
     title: "Article 370",
     description: "A political action thriller based on the revocation of Article 370 in Jammu and Kashmir.",
     genre: ["Action", "Thriller", "Political"],
-    language: ["Hindi"],
+    language: "Hindi",
     duration: 140,
     rating: "UA",
     imdbRating: 7.8,
@@ -224,7 +224,7 @@ const sampleTheatres = [
     address: {
       street: "Pacific Mall, Tagore Garden",
       area: "Subhash Nagar",
-      city: "Delhi NCR", 
+      city: "Delhi NCR",
       state: "Delhi",
       pincode: "110018"
     },
@@ -479,14 +479,14 @@ const sampleTheatres = [
 const generateSeats = (theatre, screenNumber) => {
   const screen = theatre.screens.find(s => s.screenNumber === screenNumber);
   if (!screen) return [];
-  
+
   const seats = [];
   screen.seatLayout.seatConfiguration.forEach(config => {
     for (let seatNum = config.startSeat; seatNum <= config.endSeat; seatNum++) {
       seats.push(`${config.row}${seatNum}`);
     }
   });
-  
+
   return seats;
 };
 
@@ -499,7 +499,7 @@ const seedData = async () => {
     try {
       const indexes = await Movie.collection.indexes();
       const textIndexes = indexes.filter(index => Object.values(index.key).some(value => value === 'text'));
-      
+
       for (const index of textIndexes) {
         await Movie.collection.dropIndex(index.name);
         console.log(`✅ Dropped index: ${index.name}`);
@@ -534,17 +534,17 @@ const seedData = async () => {
     }
     console.log(`✅ ${theatres.length} theatres added`);
 
-    // Generate shows for next 7 days
+    // Generate shows for next 30 days
     console.log('⏰ Generating shows...');
     const shows = [];
     const showTimes = ['09:30', '13:15', '16:45', '20:00'];
     const languages = ['Hindi', 'English'];
     const formats = ['2D', '3D'];
 
-    for (let i = 0; i < 3; i++) { // Reduced to 3 days for testing
+    for (let i = 0; i < 30; i++) { // Increased to 30 days for testing
       const showDate = new Date();
       showDate.setDate(showDate.getDate() + i);
-      
+
       for (const theatre of theatres) {
         for (const screen of theatre.screens) {
           for (const movie of movies) {
@@ -553,7 +553,7 @@ const seedData = async () => {
                 for (const format of formats) {
                   if (movie.formats.includes(format)) {
                     const allSeats = generateSeats(theatre, screen.screenNumber);
-                    
+
                     const show = new Show({
                       movie: movie._id,
                       theatre: theatre._id,
@@ -573,7 +573,7 @@ const seedData = async () => {
                       totalSeats: allSeats.length,
                       status: "active"
                     });
-                    
+
                     await show.save();
                     shows.push(show);
                   }

@@ -1,11 +1,15 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
 import { seatsService } from '../services/seatsService'
+import { api } from '../services/api'
 
 interface Seat {
   seatNumber: string
+  seatType: string
   status: 'available' | 'booked' | 'blocked'
   price: number
+  row: string
+  number: number
 }
 
 const SeatSelection = () => {
@@ -13,6 +17,7 @@ const SeatSelection = () => {
   const navigate = useNavigate()
   const [seats, setSeats] = useState<Seat[]>([])
   const [selectedSeats, setSelectedSeats] = useState<string[]>([])
+  const [loading, setLoading] = useState(false)
 
   useEffect(() => {
     fetchSeats()
@@ -32,7 +37,7 @@ const SeatSelection = () => {
   const toggleSeat = (seat: Seat) => {
     if (seat.status !== 'available') return
 
-    setSelectedSeats(prev => 
+    setSelectedSeats(prev =>
       prev.includes(seat.seatNumber)
         ? prev.filter(s => s !== seat.seatNumber)
         : [...prev, seat.seatNumber]
@@ -44,6 +49,42 @@ const SeatSelection = () => {
       const seat = seats.find(s => s.seatNumber === seatNumber)
       return total + (seat?.price || 0)
     }, 0)
+  }
+
+  const handleProceedToPay = async () => {
+    if (selectedSeats.length === 0 || !showId) return
+
+    setLoading(true)
+    try {
+      // Prepare seat data for booking
+      const seatDetails = selectedSeats.map(seatNumber => {
+        const seat = seats.find(s => s.seatNumber === seatNumber)
+        return {
+          seatNumber,
+          seatType: seat?.seatType || 'regular'
+        }
+      })
+
+      // Create booking
+      const response = await api.post('/bookings', {
+        showId,
+        seats: seatDetails
+      })
+
+      const booking = response.data.booking
+      console.log('Booking created:', booking)
+
+      // Store booking data in localStorage for payment page
+      localStorage.setItem('currentBooking', JSON.stringify(booking))
+
+      // Navigate to payment with booking ID
+      navigate(`/payment/${booking._id}`)
+    } catch (error) {
+      console.error('Error creating booking:', error)
+      alert('Failed to create booking. Please try again.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -64,7 +105,7 @@ const SeatSelection = () => {
               disabled={seat.status !== 'available'}
               className={`
                 w-8 h-8 rounded text-xs font-medium flex items-center justify-center
-                ${seat.status === 'available' 
+                ${seat.status === 'available'
                   ? selectedSeats.includes(seat.seatNumber)
                     ? 'bg-green-500 text-white'
                     : 'bg-white border border-gray-300 hover:border-primary-500'
@@ -105,15 +146,15 @@ const SeatSelection = () => {
                   {selectedSeats.join(', ') || 'No seats selected'}
                 </p>
               </div>
-              
+
               <div className="text-right">
                 <div className="text-2xl font-bold">₹{calculateTotal()}</div>
                 <button
-                  disabled={selectedSeats.length === 0}
-                  onClick={() => navigate(`/payment/${showId}`)}
+                  disabled={selectedSeats.length === 0 || loading}
+                  onClick={handleProceedToPay}
                   className="bg-primary-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary-700 disabled:bg-gray-300"
                 >
-                  Proceed to Pay
+                  {loading ? 'Creating Booking...' : 'Proceed to Pay'}
                 </button>
               </div>
             </div>

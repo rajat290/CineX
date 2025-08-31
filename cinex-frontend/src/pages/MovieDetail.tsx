@@ -110,7 +110,7 @@ const MovieDetail = () => {
                   </div>
                   <div>
                     <h4 className="text-gray-400 mb-2">Languages</h4>
-                    <p>{movie.language.join(', ')}</p>
+                    <p>{movie.language}</p>
                   </div>
                 </div>
               </div>
