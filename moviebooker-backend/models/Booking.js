@@ -59,13 +59,6 @@ const bookingSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Generate booking ID before save
-bookingSchema.pre('save', async function(next) {
-  if (this.isNew) {
-    const count = await mongoose.model('Booking').countDocuments();
-    this.bookingId = `CINEX${(count + 1).toString().padStart(4, '0')}`;
-  }
-  next();
-});
+// Booking ID is generated explicitly in the controller
 
 module.exports = mongoose.model('Booking', bookingSchema);

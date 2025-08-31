@@ -33,19 +33,15 @@ const sampleMovies = [
     rating: "UA",
     imdbRating: 8.2,
     releaseDate: new Date("2024-01-25"),
-    poster: "https://example.com/posters/fighter.jpg",
-    backdrop: "https://example.com/backdrops/fighter.jpg",
-    trailer: "https://youtube.com/watch?v=fg6TUzR1EWA",
+    poster: "https://m.media-amazon.com/images/M/MV5BMTYxNjYxNjYxNl5BMl5BanBnXkFtZTgwNzY3NjYxNzM@._V1_FMjpg_UX1000_.jpg",
     cast: [
-      { name: "Hrithik Roshan", role: "Group Captain Shamsher Pathania", image: "https://example.com/actors/hrithik.jpg" },
-      { name: "Deepika Padukone", role: "Squadron Leader Minal Rathore", image: "https://example.com/actors/deepika.jpg" },
-      { name: "Anil Kapoor", role: "Air Chief Marshal Rakesh Jai Singh", image: "https://example.com/actors/anil.jpg" }
+      { name: "Hrithik Roshan", role: "Vikram Rathore", image: "https://upload.wikimedia.org/wikipedia/commons/3/3a/Hrithik_Roshan_promoting_Krrish_3.jpg" },
+      { name: "Deepika Padukone", role: "Naina", image: "https://upload.wikimedia.org/wikipedia/commons/8/8e/Deepika_Padukone_2018.jpg" }
     ],
     crew: [
-      { name: "Siddharth Anand", role: "Director", image: "https://example.com/crew/siddharth.jpg" },
-      { name: "Ramon Chibb", role: "Cinematographer", image: "https://example.com/crew/ramon.jpg" }
+      { name: "Siddharth Anand", role: "Director", image: "https://upload.wikimedia.org/wikipedia/commons/7/7a/Siddharth_Anand_2018.jpg" }
     ],
-    formats: ["2D", "3D", "IMAX"],
+    formats: ["2D", "3D"],
     status: "running",
     isActive: true
   },
@@ -58,11 +54,11 @@ const sampleMovies = [
     rating: "UA",
     imdbRating: 7.1,
     releaseDate: new Date("2024-02-09"),
-    poster: "https://example.com/posters/teribaaton.jpg",
+    poster: "https://m.media-amazon.com/images/M/MV5BMTYxNjYxNjYxNl5BMl5BanBnXkFtZTgwNzY3NjYxNzM@._V1_FMjpg_UX1000_.jpg",
     cast: [
-      { name: "Shahid Kapoor", role: "Aryan", image: "https://example.com/actors/shahid.jpg" },
-      { name: "Kriti Sanon", role: "Sifra", image: "https://example.com/actors/kriti.jpg" },
-      { name: "Dhairya Karwa", role: "Rohan", image: "https://example.com/actors/dhairya.jpg" }
+      { name: "Shahid Kapoor", role: "Aryan", image: "https://upload.wikimedia.org/wikipedia/commons/1/1e/Shahid_Kapoor_promoting_Kaminey.jpg" },
+      { name: "Kriti Sanon", role: "Sifra", image: "https://upload.wikimedia.org/wikipedia/commons/7/7a/Kriti_Sanon_promoting_Heropanti_2.jpg" },
+      { name: "Dhairya Karwa", role: "Rohan", image: "https://upload.wikimedia.org/wikipedia/commons/4/4a/Dhairya_Karwa_at_the_promotion_of_Love_Aziza.jpg" }
     ],
     crew: [
       { name: "Amit Joshi", role: "Director", image: "https://example.com/crew/amit.jpg" },
@@ -81,10 +77,10 @@ const sampleMovies = [
     rating: "UA",
     imdbRating: 7.8,
     releaseDate: new Date("2024-02-23"),
-    poster: "https://example.com/posters/article370.jpg",
+    poster: "https://m.media-amazon.com/images/M/MV5BMTYxNjYxNjYxNl5BMl5BanBnXkFtZTgwNzY3NjYxNzM@._V1_FMjpg_UX1000_.jpg",
     cast: [
-      { name: "Yami Gautam", role: "Zooni Haksar", image: "https://example.com/actors/yami.jpg" },
-      { name: "Priyamani", role: "Rajeshwari Swaminathan", image: "https://example.com/actors/priyamani.jpg" }
+      { name: "Yami Gautam", role: "Zooni Haksar", image: "https://upload.wikimedia.org/wikipedia/commons/9/9a/Yami_Gautam_at_the_promotions_of_Vicky_Donor.jpg" },
+      { name: "Priyamani", role: "Rajeshwari Swaminathan", image: "https://upload.wikimedia.org/wikipedia/commons/3/3a/Priyamani_at_the_promotions_of_Paradesi.jpg" }
     ],
     crew: [
       { name: "Aditya Suhas Jambhale", role: "Director", image: "https://example.com/crew/aditya.jpg" }
