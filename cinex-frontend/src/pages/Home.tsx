@@ -93,8 +93,8 @@ const Home = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <Header />
+    // <div className="min-h-screen bg-gray-900 text-white">
+    //   <Header />
 
       <main>
         {/* Welcome Message for logged-in users */}
@@ -163,7 +163,7 @@ const Home = () => {
           )}
         </div>
       </main>
-    </div>
+    // </div>
   )
 }
 
