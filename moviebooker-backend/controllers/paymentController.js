@@ -6,8 +6,9 @@ const Wallet = require('../models/Wallet');
 const razorpay = require('../config/razorpay');
 const { sendBookingConfirmation, sendPaymentFailedEmail } = require('../utils/emailService');
 const { signTicketPayload } = require('../utils/ticketToken');
+const withTransaction = require('../utils/withTransaction');
 
-const finalizeConfirmedBooking = async (booking, userId) => {
+const finalizeConfirmedBooking = async (booking, userId, session) => {
   booking.paymentStatus = 'completed';
   booking.status = 'confirmed';
   booking.ticketToken = signTicketPayload({
@@ -17,7 +18,7 @@ const finalizeConfirmedBooking = async (booking, userId) => {
     showId: booking.show.toString()
   });
   booking.qrCode = booking.ticketToken;
-  await booking.save();
+  await booking.save({ session });
 
   if (booking.loyaltyPointsEarned > 0) {
     await Wallet.findOneAndUpdate(
@@ -35,7 +36,7 @@ const finalizeConfirmedBooking = async (booking, userId) => {
           }
         }
       },
-      { upsert: true, new: true }
+      { upsert: true, new: true, session }
     );
   }
 };
@@ -152,68 +153,87 @@ const verifyPayment = async (req, res) => {
       return res.status(400).json({ message: 'Invalid payment signature' });
     }
 
-    // Update booking and payment status
-    const booking = await Booking.findOne({ razorpayOrderId: orderId })
-      .populate('movie')
-      .populate('theatre');
-    if (!booking) {
-      return res.status(404).json({ message: 'Booking not found' });
-    }
+    const result = await withTransaction(async (session) => {
+      // Update booking and payment status
+      const booking = await Booking.findOne({ razorpayOrderId: orderId })
+        .populate('movie')
+        .populate('theatre')
+        .session(session);
+      if (!booking) {
+        return { statusCode: 404, body: { message: 'Booking not found' } };
+      }
 
-    if (booking.user.toString() !== req.user._id.toString()) {
-      return res.status(403).json({ message: 'Access denied' });
-    }
+      if (booking.user.toString() !== req.user._id.toString()) {
+        return { statusCode: 403, body: { message: 'Access denied' } };
+      }
 
-    if (booking.paymentStatus === 'completed') {
-      return res.json({
-        message: 'Payment verified successfully',
-        booking: {
-          id: booking._id,
-          bookingId: booking.bookingId,
-          status: booking.status,
-          paymentStatus: booking.paymentStatus
+      if (booking.paymentStatus === 'completed') {
+        return {
+          statusCode: 200,
+          body: {
+            message: 'Payment verified successfully',
+            booking: {
+              id: booking._id,
+              bookingId: booking.bookingId,
+              status: booking.status,
+              paymentStatus: booking.paymentStatus
+            }
+          }
+        };
+      }
+
+      // Confirm seat booking
+      const show = await Show.findById(booking.show).session(session);
+      if (!show) {
+        return { statusCode: 404, body: { message: 'Show not found' } };
+      }
+      const seatNumbers = booking.seats.map(seat => seat.seatNumber);
+      show.bookSeats(seatNumbers);
+      await show.save({ session });
+
+      booking.razorpayPaymentId = paymentId;
+      booking.razorpaySignature = signature;
+      await finalizeConfirmedBooking(booking, req.user._id, session);
+
+      // Update payment record
+      await Payment.findOneAndUpdate(
+        { orderId },
+        {
+          paymentId,
+          status: 'paid',
+          gatewayResponse: req.body
+        },
+        { session }
+      );
+
+      return {
+        statusCode: 200,
+        booking,
+        show,
+        body: {
+          message: 'Payment verified successfully',
+          booking: {
+            id: booking._id,
+            _id: booking._id,
+            bookingId: booking.bookingId,
+            status: booking.status,
+            paymentStatus: booking.paymentStatus,
+            ticketToken: booking.ticketToken,
+            qrCode: booking.qrCode
+          }
         }
-      });
-    }
-
-    // Confirm seat booking
-    const show = await Show.findById(booking.show);
-    if (!show) {
-      return res.status(404).json({ message: 'Show not found' });
-    }
-    const seatNumbers = booking.seats.map(seat => seat.seatNumber);
-    show.bookSeats(seatNumbers);
-    await show.save();
-
-    booking.razorpayPaymentId = paymentId;
-    booking.razorpaySignature = signature;
-    await finalizeConfirmedBooking(booking, req.user._id);
-
-    // Update payment record
-    await Payment.findOneAndUpdate(
-      { orderId },
-      {
-        paymentId,
-        status: 'paid',
-        gatewayResponse: req.body
-      }
-    );
-
-    try {
-      await sendBookingConfirmation(req.user, booking, show, booking.movie, booking.theatre);
-    } catch (emailError) {
-      console.error('Booking confirmation email failed:', emailError);
-    }
-
-    res.json({ 
-      message: 'Payment verified successfully', 
-      booking: {
-        id: booking._id,
-        bookingId: booking.bookingId,
-        status: booking.status,
-        paymentStatus: booking.paymentStatus
-      }
+      };
     });
+
+    if (result.booking && result.show) {
+      try {
+        await sendBookingConfirmation(req.user, result.booking, result.show, result.booking.movie, result.booking.theatre);
+      } catch (emailError) {
+        console.error('Booking confirmation email failed:', emailError);
+      }
+    }
+
+    res.status(result.statusCode).json(result.body);
   } catch (error) {
     console.error('Verify payment error:', error);
     res.status(500).json({ message: error.message });
@@ -270,60 +290,82 @@ const webhook = async (req, res) => {
 // Helper functions for webhook
 async function handleSuccessfulPayment(event) {
   const { order_id, payment_id } = event.payload.payment.entity;
-  
-  const booking = await Booking.findOne({ razorpayOrderId: order_id })
-    .populate('user')
-    .populate('movie')
-    .populate('theatre');
-  if (booking) {
-    if (booking.paymentStatus === 'completed') {
-      return;
+
+  const result = await withTransaction(async (session) => {
+    const booking = await Booking.findOne({ razorpayOrderId: order_id })
+      .populate('user')
+      .populate('movie')
+      .populate('theatre')
+      .session(session);
+    if (!booking || booking.paymentStatus === 'completed') {
+      return null;
     }
 
-    const show = await Show.findById(booking.show);
+    const show = await Show.findById(booking.show).session(session);
     if (show) {
       const seatNumbers = booking.seats.map(seat => seat.seatNumber);
       show.bookSeats(seatNumbers);
-      await show.save();
+      await show.save({ session });
     }
 
     booking.razorpayPaymentId = payment_id;
-    await finalizeConfirmedBooking(booking, booking.user._id);
+    await finalizeConfirmedBooking(booking, booking.user._id, session);
 
     await Payment.findOneAndUpdate(
       { orderId: order_id },
-      { paymentId: payment_id, status: 'paid', gatewayResponse: event.payload.payment.entity }
+      { paymentId: payment_id, status: 'paid', gatewayResponse: event.payload.payment.entity },
+      { session }
     );
 
-    if (show) {
-      try {
-        await sendBookingConfirmation(booking.user, booking, show, booking.movie, booking.theatre);
-      } catch (emailError) {
-        console.error('Booking confirmation email failed:', emailError);
-      }
+    return { booking, show };
+  });
+
+  if (result?.show) {
+    try {
+      await sendBookingConfirmation(result.booking.user, result.booking, result.show, result.booking.movie, result.booking.theatre);
+    } catch (emailError) {
+      console.error('Booking confirmation email failed:', emailError);
     }
   }
 }
 
 async function handleFailedPayment(event) {
   const { order_id } = event.payload.payment.entity;
-  
-  const booking = await Booking.findOne({ razorpayOrderId: order_id })
+
+  const result = await withTransaction(async (session) => {
+    const booking = await Booking.findOne({ razorpayOrderId: order_id })
     .populate('user')
     .populate('movie')
-    .populate('theatre');
-  if (booking) {
+      .populate('theatre')
+      .session(session);
+    if (!booking) {
+      return null;
+    }
+
     booking.paymentStatus = 'failed';
     booking.status = 'cancelled';
-    
+
     // Release seats
-    const show = await Show.findById(booking.show);
+    const show = await Show.findById(booking.show).session(session);
     const seatNumbers = booking.seats.map(seat => seat.seatNumber);
     if (show) {
       show.releaseSeats(seatNumbers);
-      await show.save();
+      await show.save({ session });
     }
-    await booking.save();
+
+    await booking.save({ session });
+
+    await Payment.findOneAndUpdate(
+      { orderId: order_id },
+      { status: 'failed', gatewayResponse: event.payload.payment.entity },
+      { session }
+    );
+
+    return { booking, show };
+  });
+
+  if (result?.booking) {
+    const { booking, show } = result;
 
     // Send payment failed email
     await sendPaymentFailedEmail(

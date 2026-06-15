@@ -65,16 +65,21 @@ const SeatSelection = () => {
         }
       })
 
+      const hold = await seatsService.blockSeats(showId, seatDetails)
+
       const response = await api.post('/bookings', {
         showId,
-        seats: seatDetails
+        seats: seatDetails,
+        holdId: hold.holdId
       })
 
       localStorage.setItem('currentBooking', JSON.stringify(response.data.booking))
+      localStorage.setItem('currentHold', JSON.stringify({ holdId: hold.holdId, showId, seats: seatDetails }))
       navigate('/payment')
     } catch (error) {
       console.error('Error creating booking:', error)
       alert('Failed to create booking. Please try again.')
+      fetchSeats()
     } finally {
       setLoading(false)
     }
