@@ -1,15 +1,15 @@
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
+import { Loader2, MapPin, Search } from 'lucide-react'
 import { useLocationStore } from '../stores/locationStore'
 import { useAuthStore } from '../stores/authStore'
-import { movieService } from '../services/movieService'
-// import Header from '../components/layout/Header'
+import { movieService, type Movie } from '../services/movieService'
 import HeroCarousel from '../components/home/HeroCarousel'
 import MovieSection from '../components/home/MovieSection'
 import CategoryNav from '../components/home/CategoryNav'
 import LocationGate from '../components/location/LocationGate'
-import { Loader2 } from 'lucide-react'
-import { type Movie } from '../services/movieService'
-
+import ExperienceCard from '../components/discovery/ExperienceCard'
+import { experienceCollections, fallbackMovies } from '../data/discovery'
 
 const Home = () => {
   const location = useLocationStore(state => state.location)
@@ -21,12 +21,8 @@ const Home = () => {
   const [noCinemaNearby, setNoCinemaNearby] = useState(false)
 
   useEffect(() => {
-    console.log('Location changed:', location)
     if (location) {
-      console.log('Fetching movies for location:', location)
       fetchMovies()
-    } else {
-      console.log('No location set, cannot fetch movies')
     }
   }, [location])
 
@@ -35,27 +31,21 @@ const Home = () => {
       setLoading(true)
       setError(null)
       setNoCinemaNearby(false)
-      console.log('Making API call to fetch movies...')
       const data = await movieService.getMovies({
         city: location,
         status: 'running'
       })
-      console.log('Movies fetched successfully:', data.movies?.length || 0, 'movies')
+
       if (!data.movies || data.movies.length === 0) {
         setNoCinemaNearby(true)
-        // Fetch movies from other locations as fallback
-        const fallbackData = await movieService.getMovies({
-          status: 'running'
-        })
+        const fallbackData = await movieService.getMovies({ status: 'running' })
         setMovies(fallbackData.movies || [])
       } else {
         setMovies(data.movies || [])
       }
     } catch (error: any) {
-      const errorMessage = error.response?.data?.message || 'Failed to load movies'
-      console.error('Error fetching movies:', error)
-      console.error('Error details:', error.response?.data)
-      setError(errorMessage)
+      setMovies(fallbackMovies)
+      setError(error.response?.data?.message || 'Live movie data is unavailable. Showing demo picks.')
     } finally {
       setLoading(false)
     }
@@ -67,103 +57,112 @@ const Home = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
+      <div className="flex min-h-screen items-center justify-center bg-zinc-950">
         <div className="text-center">
-          <Loader2 className="w-12 h-12 text-primary-500 animate-spin mx-auto mb-4" />
-          <p className="text-gray-300">Loading amazing movies...</p>
-        </div>
-      </div>
-    )
-  }
-
-  if (error) {
-    return (
-      <div className="min-h-screen bg-gray-900 flex items-center justify-center">
-        <div className="text-center">
-          <div className="text-red-500 text-lg mb-4">⚠️ {error}</div>
-          <button
-            onClick={fetchMovies}
-            className="bg-primary-600 text-white px-6 py-2 rounded-lg hover:bg-primary-700"
-          >
-            Try Again
-          </button>
+          <Loader2 className="mx-auto mb-4 h-12 w-12 animate-spin text-rose-400" />
+          <p className="text-zinc-300">Loading your city guide...</p>
         </div>
       </div>
     )
   }
 
   return (
-    // <div className="min-h-screen bg-gray-900 text-white">
-    //   <Header />
-
-      <main>
-        {/* Welcome Message for logged-in users */}
-        {isAuthenticated && user && (
-          <div className="bg-primary-600">
-            <div className="container mx-auto px-4 py-3">
-              <p className="text-center text-white">
-                Welcome back, <strong>{user.firstName}</strong>! 🎬
-              </p>
-            </div>
+    <main className="bg-zinc-950 text-white">
+      {isAuthenticated && user && (
+        <div className="border-b border-white/10 bg-white/[0.04]">
+          <div className="container py-3">
+            <p className="text-sm text-zinc-300">
+              Welcome back, <strong className="text-white">{user.firstName}</strong>. Fresh picks are ready for {location}.
+            </p>
           </div>
-        )}
-
-        {noCinemaNearby && (
-          <div className="container mx-auto px-4 py-4 bg-yellow-600 text-black rounded mb-6">
-            No cinema nearby for <strong>{detectedLocationName}</strong>. Showing movies from other locations.
-          </div>
-        )}
-
-        <HeroCarousel movies={movies.slice(0, 5)} />
-
-        <div className="container mx-auto px-4 py-8">
-          <CategoryNav />
-
-          {/* Now Showing */}
-          <MovieSection
-            title="Now Showing in Theaters"
-            movies={movies.filter(m => m.status === 'running')}
-            viewAllLink="/movies?status=running"
-          />
-
-          {/* Coming Soon */}
-          <MovieSection
-            title="Coming Soon"
-            movies={movies.filter(m => m.status === 'upcoming')}
-            viewAllLink="/movies?status=upcoming"
-          />
-
-          {/* Trending */}
-          <MovieSection
-            title="Trending This Week"
-            movies={movies.sort(() => 0.5 - Math.random()).slice(0, 5)}
-            viewAllLink="/movies?sort=trending"
-          />
-
-          {/* Recommended based on user preferences */}
-          {user?.preferences?.genres && user.preferences.genres.length > 0 ? (
-            <MovieSection
-              title="Recommended For You"
-              movies={movies
-                .filter(movie =>
-                  movie.genre?.some((genre: string) =>
-                    user.preferences!.genres.includes(genre)
-                  )
-                )
-                .slice(0, 5)
-              }
-              viewAllLink="/movies?recommended=true"
-            />
-          ) : (
-            <MovieSection
-              title="Popular Movies"
-              movies={movies.slice(0, 5)}
-              viewAllLink="/movies"
-            />
-          )}
         </div>
-      </main>
-    // </div>
+      )}
+
+      {noCinemaNearby && (
+        <div className="container my-4 rounded-2xl border border-amber-400/30 bg-amber-400/10 px-4 py-4 text-amber-100">
+          No cinema nearby for <strong>{detectedLocationName || location}</strong>. Showing movies from other locations.
+        </div>
+      )}
+
+      <section className="container py-6 md:py-8">
+        {error && (
+          <div className="mb-5 flex flex-wrap items-center gap-2 rounded-2xl border border-white/10 bg-white/[0.04] px-4 py-3 text-sm text-zinc-400">
+            <span>Showing sample picks while live listings reconnect.</span>
+            <button onClick={fetchMovies} className="font-semibold text-white">
+              Retry
+            </button>
+          </div>
+        )}
+
+        <div className="mb-6 flex flex-col gap-4 md:flex-row md:items-end md:justify-between">
+          <div>
+            <div className="mb-3 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-1 text-xs font-semibold uppercase text-zinc-300">
+              <MapPin className="h-3.5 w-3.5 text-rose-300" />
+              {location}
+            </div>
+            <h1 className="max-w-3xl text-3xl font-black tracking-tight md:text-5xl">
+              Movies and city experiences, booked without the chaos.
+            </h1>
+            <p className="mt-3 max-w-2xl text-zinc-400">
+              Start with what is playing near you, then add live events, plays or sports if the evening needs more.
+            </p>
+          </div>
+          <Link to="/search" className="inline-flex items-center justify-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-5 py-3 text-sm font-bold text-white hover:bg-white/[0.1]">
+            <Search className="h-4 w-4" />
+            Search
+          </Link>
+        </div>
+        <CategoryNav />
+      </section>
+
+      <section className="container">
+        <HeroCarousel movies={movies.slice(0, 5)} />
+      </section>
+
+      <div className="container py-10">
+        <MovieSection
+          title="Now showing"
+          movies={movies.filter(m => m.status === 'running')}
+          viewAllLink="/search"
+        />
+
+        <section className="mb-12 border-t border-white/10 pt-10">
+          <div className="mb-5 flex items-center justify-between">
+            <div>
+              <h2 className="text-2xl font-black tracking-tight">Add something live</h2>
+              <p className="mt-1 text-sm text-zinc-500">Comedy, music, plays and sports when a movie is not enough.</p>
+            </div>
+            <Link to="/events" className="text-sm font-semibold text-zinc-300 hover:text-white">View events</Link>
+          </div>
+          <div className="-mx-4 flex gap-4 overflow-x-auto px-4 pb-2 md:mx-0 md:px-0">
+            {experienceCollections.slice(0, 4).map((item) => (
+              <ExperienceCard key={item.id} {...item} />
+            ))}
+          </div>
+        </section>
+
+        <MovieSection
+          title="Coming soon"
+          movies={movies.filter(m => m.status === 'upcoming')}
+          viewAllLink="/search"
+        />
+
+        {user?.preferences?.genres && user.preferences.genres.length > 0 && (
+          <MovieSection
+            title="Recommended for you"
+            movies={movies
+              .filter(movie =>
+                movie.genre?.some((genre: string) =>
+                  user.preferences!.genres.includes(genre)
+                )
+              )
+              .slice(0, 5)
+            }
+            viewAllLink="/movies?recommended=true"
+          />
+        )}
+      </div>
+    </main>
   )
 }
 

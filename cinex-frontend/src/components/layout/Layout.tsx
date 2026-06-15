@@ -22,10 +22,10 @@ const Layout = ({ children }: LayoutProps) => {
   }, [location.pathname])
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
+    <div className="min-h-screen bg-zinc-950 text-white">
       {showHeader && <Header />}
       
-      <main className={showBottomNav ? 'pb-16' : ''}>
+      <main className={showBottomNav ? 'pb-16 md:pb-0' : ''}>
         {children}
       </main>
 

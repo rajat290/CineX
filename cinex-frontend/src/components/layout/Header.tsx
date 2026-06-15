@@ -1,78 +1,56 @@
 import { useState } from 'react'
-import { Link, useNavigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { useAuthStore } from '../../stores/authStore'
 import { useLocationStore } from '../../stores/locationStore'
 import LocationGate from '../location/LocationGate'
+import { MapPin, Search, UserCircle } from 'lucide-react'
 
 const Header = () => {
-  const { user, isAuthenticated, logout } = useAuthStore()
+  const { user, isAuthenticated } = useAuthStore()
   const location = useLocationStore(state => state.location)
   const [showLocationGate, setShowLocationGate] = useState(false)
-  const navigate = useNavigate()
-
-  const handleLogout = () => {
-    logout()
-    navigate('/login')
-  }
 
   return (
-    <header className="bg-gray-900 text-white shadow-md sticky top-0 z-50">
-      <div className="container mx-auto flex items-center justify-between px-4 py-3">
-        <Link to="/" className="text-2xl font-bold text-primary-500">
-          CineX
+    <header className="sticky top-0 z-50 border-b border-white/10 bg-zinc-950/85 text-white backdrop-blur-xl">
+      <div className="container flex items-center justify-between gap-3 py-3">
+        <Link to="/" className="flex items-center gap-2">
+          <span className="flex h-10 w-10 items-center justify-center rounded-2xl bg-rose-500 text-lg font-black">
+            X
+          </span>
+          <span className="text-xl font-black tracking-tight">CineX</span>
         </Link>
 
-        <nav className="flex items-center space-x-4">
+        <Link
+          to="/search"
+          className="hidden max-w-xl flex-1 items-center gap-3 rounded-full border border-white/10 bg-white/[0.05] px-4 py-2 text-sm text-zinc-500 transition hover:border-white/20 hover:text-white md:flex"
+        >
+          <Search className="h-4 w-4" />
+          Search movies and experiences
+        </Link>
+
+        <nav className="flex items-center gap-2">
           <button
             onClick={() => setShowLocationGate(true)}
-            className="flex items-center space-x-1 bg-primary-600 hover:bg-primary-700 text-white px-3 py-1 rounded"
+            className="flex items-center gap-2 rounded-full border border-white/10 bg-white/[0.06] px-3 py-2 text-sm font-semibold hover:bg-white/[0.1]"
             aria-label="Select Location"
           >
-            <svg
-              xmlns="http://www.w3.org/2000/svg"
-              className="h-5 w-5"
-              fill="none"
-              viewBox="0 0 24 24"
-              stroke="currentColor"
-              strokeWidth={2}
-            >
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 11c1.104 0 2-.896 2-2s-.896-2-2-2-2 .896-2 2 .896 2 2 2z"
-              />
-              <path
-                strokeLinecap="round"
-                strokeLinejoin="round"
-                d="M12 21c-4.418 0-8-3.582-8-8 0-3.866 3.134-7 7-7s7 3.134 7 7c0 4.418-3.582 8-8 8z"
-              />
-            </svg>
-            <span>{location || 'Select Location'}</span>
+            <MapPin className="h-4 w-4 text-rose-300" />
+            <span className="hidden sm:inline">{location || 'Select City'}</span>
           </button>
 
           {isAuthenticated && user ? (
             <>
-              <span>Welcome, {user.firstName}</span>
-              <button
-                onClick={handleLogout}
-                className="bg-red-600 hover:bg-red-700 px-3 py-1 rounded"
-              >
-                Logout
-              </button>
+              <Link to="/profile" aria-label={`Open ${user.firstName}'s profile`}>
+                <UserCircle className="h-8 w-8 text-zinc-300 hover:text-white" />
+              </Link>
             </>
           ) : (
             <>
               <Link
                 to="/login"
-                className="bg-primary-600 hover:bg-primary-700 px-3 py-1 rounded"
+                className="rounded-full border border-white/10 px-4 py-2 text-sm font-semibold text-zinc-200 hover:bg-white/[0.08]"
               >
-                Login
-              </Link>
-              <Link
-                to="/register"
-                className="bg-primary-600 hover:bg-primary-700 px-3 py-1 rounded"
-              >
-                Register
+                Sign in
               </Link>
             </>
           )}

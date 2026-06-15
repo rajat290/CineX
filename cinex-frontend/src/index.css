@@ -6,7 +6,7 @@
 
 @layer base {
   body {
-    @apply bg-gray-900 text-black font-sans;
+    @apply bg-zinc-950 text-white font-sans antialiased;
   }
 }
 
