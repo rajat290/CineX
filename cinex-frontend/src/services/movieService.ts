@@ -22,9 +22,12 @@ export interface Movie {
 
 interface MoviesResponse {
   movies: Movie[]
-  total: number
-  page: number
-  totalPages: number
+  pagination?: {
+    total: number
+    page: number
+    limit: number
+    totalPages: number
+  }
 }
 
 export const movieService = {
@@ -39,17 +42,17 @@ export const movieService = {
   },
 
   searchMovies: async (query: string): Promise<MoviesResponse> => {
-    const response = await api.get(`/movies/search?q=${query}`)
+    const response = await api.get('/movies', { params: { search: query, status: 'all' } })
     return response.data
   },
 
   getTrending: async (): Promise<MoviesResponse> => {
-    const response = await api.get('/movies/trending')
+    const response = await api.get('/movies', { params: { status: 'running' } })
     return response.data
   },
 
   getUpcoming: async (): Promise<MoviesResponse> => {
-    const response = await api.get('/movies/upcoming')
+    const response = await api.get('/movies', { params: { status: 'upcoming' } })
     return response.data
   }
 }

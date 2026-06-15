@@ -267,14 +267,8 @@ const sendCancellationEmail = async (user, booking, movie, theatre) => {
   }
 };
 
-// Module exports mein add karo
 module.exports = {
   sendBookingConfirmation,
   sendPaymentFailedEmail,
-  sendCancellationEmail  // ✅ Ye add karo
-};
-
-module.exports = {
-  sendBookingConfirmation,
-  sendPaymentFailedEmail
+  sendCancellationEmail
 };

@@ -1,26 +1,8 @@
-import { useParams, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { MapPin, Clock } from 'lucide-react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { ArrowLeft, MapPin } from 'lucide-react'
 import { showService } from '../services/showService'
 import { useLocationStore } from '../stores/locationStore'
-
-interface Theatre {
-  _id: string
-  name: string
-  address: {
-    area: string
-    city: string
-  }
-  shows: Show[]
-}
-
-interface Show {
-  _id?: string
-  id?: string
-  showTime: string
-  format: string
-  pricing?: Array<{ price: number }>
-}
 
 const Theatres = () => {
   const { movieId } = useParams()
@@ -36,32 +18,25 @@ const Theatres = () => {
 
   const fetchTheatres = async () => {
     try {
-      console.log('Fetching theatres for movie:', movieId, 'city:', location, 'date:', selectedDate.toISOString().split('T')[0])
       const data = await showService.getTheatresForMovie(movieId!, {
         date: selectedDate.toISOString().split('T')[0],
         city: location
       })
-      console.log('API response:', data)
       setTheatres(data.theatres || [])
 
-      // If no theatres found with city filter, try without city filter
       if ((!data.theatres || data.theatres.length === 0) && location) {
-        console.log('No theatres found with city filter, trying without city filter...')
         const dataWithoutCity = await showService.getTheatresForMovie(movieId!, {
           date: selectedDate.toISOString().split('T')[0]
         })
-        console.log('API response without city filter:', dataWithoutCity)
         setTheatres(dataWithoutCity.theatres || [])
       }
-    } catch (error) {
-      console.error('Error fetching theatres:', error)
+    } catch {
       setTheatres([])
     }
   }
 
   const handleTheatreClick = (theatreData: any) => {
-    const theatre = theatreData.theatre || theatreData;
-    setSelectedTheatre(theatre)
+    setSelectedTheatre(theatreData.theatre || theatreData)
   }
 
   const handleShowTimeClick = (show: any) => {
@@ -69,111 +44,112 @@ const Theatres = () => {
   }
 
   if (selectedTheatre) {
+    const theatreShows = theatres.find(t => (t.theatre || t)._id === selectedTheatre._id)?.shows || []
+
     return (
-      <div className="min-h-screen bg-gray-900 text-white">
-        <div className="container mx-auto px-4 py-8">
-          {/* Back Button */}
+      <main className="min-h-screen bg-zinc-950 pb-24 text-white">
+        <div className="container py-8">
           <button
             onClick={() => setSelectedTheatre(null)}
-            className="mb-6 text-gray-400 hover:text-white flex items-center gap-2"
+            className="mb-6 inline-flex items-center gap-2 text-zinc-400 hover:text-white"
           >
-            ← Back to Theatres
+            <ArrowLeft className="h-4 w-4" />
+            Back to theatres
           </button>
 
-          {/* Theatre Header */}
-          <div className="bg-gray-800 rounded-lg p-6 mb-6">
-            <h1 className="text-2xl font-bold mb-2">{selectedTheatre.name}</h1>
-            <div className="flex items-center text-gray-300">
-              <MapPin className="w-4 h-4 mr-2" />
+          <section className="mb-6 rounded-3xl border border-white/10 bg-white/[0.04] p-6">
+            <h1 className="mb-2 text-3xl font-black tracking-tight">{selectedTheatre.name}</h1>
+            <div className="flex items-center text-zinc-300">
+              <MapPin className="mr-2 h-4 w-4 text-rose-300" />
               {selectedTheatre.address?.area || 'Area not available'}, {selectedTheatre.address?.city || 'City not available'}
             </div>
-          </div>
+          </section>
 
-          {/* Show Times */}
-          <div>
-            <h2 className="text-xl font-semibold mb-4">Select Show Time</h2>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-              {theatres.find(t => (t.theatre || t)._id === selectedTheatre._id)?.shows?.map((show: any) => (
+          <section>
+            <h2 className="mb-4 text-xl font-black">Select show time</h2>
+            <div className="grid grid-cols-2 gap-4 md:grid-cols-3 lg:grid-cols-4">
+              {theatreShows.map((show: any) => (
                 <button
                   key={show.id || show._id}
                   onClick={() => handleShowTimeClick(show)}
-                  className="bg-gray-800 hover:bg-gray-700 rounded-lg p-4 text-center transition-colors"
+                  className="rounded-2xl border border-white/10 bg-white/[0.04] p-4 text-center transition-colors hover:bg-white/[0.08]"
                 >
-                  <div className="text-lg font-semibold">{show.showTime}</div>
-                  <div className="text-sm text-gray-400 mt-1">{show.format}</div>
-                  <div className="text-primary-400 font-medium mt-2">
-                    ₹{show.pricing?.[0]?.price || 'N/A'}
+                  <div className="text-lg font-black">{show.showTime}</div>
+                  <div className="mt-1 text-sm text-zinc-400">{show.format}</div>
+                  <div className="mt-2 font-semibold text-rose-300">
+                    INR {show.pricing?.[0]?.price || 'N/A'}
                   </div>
                 </button>
               ))}
             </div>
-          </div>
+          </section>
         </div>
-      </div>
+      </main>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gray-900 text-white">
-      <div className="container mx-auto px-4 py-8">
-        <h1 className="text-2xl font-bold mb-6">Select Theatre</h1>
+    <main className="min-h-screen bg-zinc-950 pb-24 text-white">
+      <div className="container py-8">
+        <h1 className="mb-2 text-4xl font-black tracking-tight">Select theatre</h1>
+        <p className="mb-6 text-zinc-400">Choose a date, venue and showtime for your plan.</p>
 
-        {/* Date Selector */}
-        <div className="bg-gray-800 rounded-lg p-4 mb-6">
-          <h3 className="font-semibold mb-3">Select Date</h3>
+        <section className="mb-6 rounded-3xl border border-white/10 bg-white/[0.04] p-4">
+          <h3 className="mb-3 font-semibold">Select date</h3>
           <div className="flex gap-2 overflow-x-auto">
-            {[...Array(7)].map((_, i) => {
+            {[...Array(7)].map((_, index) => {
               const date = new Date()
-              date.setDate(date.getDate() + i)
+              date.setDate(date.getDate() + index)
+              const active = date.toDateString() === selectedDate.toDateString()
+
               return (
                 <button
-                  key={i}
+                  key={index}
                   onClick={() => setSelectedDate(date)}
-                  className={`px-4 py-2 rounded-lg min-w-20 ${
-                    date.toDateString() === selectedDate.toDateString()
-                      ? 'bg-primary-600 text-white'
-                      : 'bg-gray-700 text-gray-300 hover:bg-gray-600'
+                  className={`min-w-20 rounded-2xl px-4 py-3 ${
+                    active
+                      ? 'bg-white text-zinc-950'
+                      : 'bg-white/[0.06] text-zinc-300 hover:bg-white/[0.1]'
                   }`}
                 >
                   <div className="text-sm">{date.toLocaleDateString('en', { weekday: 'short' })}</div>
-                  <div className="font-semibold">{date.getDate()}</div>
+                  <div className="font-black">{date.getDate()}</div>
                 </button>
               )
             })}
           </div>
-        </div>
+        </section>
 
-        {/* Theatres List */}
-        <div className="space-y-4">
+        <section className="space-y-4">
           {theatres.map((theatreData) => {
-            const theatre = theatreData.theatre || theatreData;
+            const theatre = theatreData.theatre || theatreData
             return (
-              <div
+              <article
                 key={theatre._id}
                 onClick={() => handleTheatreClick(theatreData)}
-                className="bg-gray-800 rounded-lg p-4 shadow cursor-pointer hover:bg-gray-700 transition-colors"
+                className="cursor-pointer rounded-3xl border border-white/10 bg-white/[0.04] p-5 transition-colors hover:bg-white/[0.08]"
               >
-                <div className="flex justify-between items-start">
+                <div className="flex items-start justify-between gap-4">
                   <div>
-                    <h3 className="font-semibold text-lg mb-2">{theatre.name}</h3>
-                    <div className="flex items-center text-gray-300 mb-3">
-                      <MapPin className="w-4 h-4 mr-1" />
+                    <h3 className="mb-2 text-lg font-black">{theatre.name}</h3>
+                    <div className="mb-3 flex items-center text-zinc-300">
+                      <MapPin className="mr-1 h-4 w-4 text-rose-300" />
                       {theatre.address?.area || 'Area not available'}, {theatre.address?.city || 'City not available'}
                     </div>
-                    <div className="text-sm text-gray-400">
+                    <div className="text-sm text-zinc-500">
                       {(theatreData.shows || []).length} shows available
                     </div>
                   </div>
-                  <div className="text-primary-400">
-                    →
+                  <div className="rounded-full bg-white px-4 py-2 text-sm font-bold text-zinc-950">
+                    Select
                   </div>
                 </div>
-              </div>
-            );
+              </article>
+            )
           })}
-        </div>
+        </section>
       </div>
-    </div>
+    </main>
   )
 }
 

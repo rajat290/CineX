@@ -8,6 +8,7 @@ const userSchema = new mongoose.Schema({
   phone: { type: String, required: true, unique: true },
   password: { type: String, required: true, minlength: 6 },
   city: { type: String, default: 'Mumbai' },
+  isAdmin: { type: Boolean, default: false },
   isEmailVerified: { type: Boolean, default: false },
   isPhoneVerified: { type: Boolean, default: false },
   preferences: {

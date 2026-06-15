@@ -1,5 +1,6 @@
-import { useParams, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
+import { useNavigate, useParams } from 'react-router-dom'
+import { Loader2 } from 'lucide-react'
 import { seatsService } from '../services/seatsService'
 import { api } from '../services/api'
 
@@ -56,7 +57,6 @@ const SeatSelection = () => {
 
     setLoading(true)
     try {
-      // Prepare seat data for booking
       const seatDetails = selectedSeats.map(seatNumber => {
         const seat = seats.find(s => s.seatNumber === seatNumber)
         return {
@@ -65,19 +65,12 @@ const SeatSelection = () => {
         }
       })
 
-      // Create booking
       const response = await api.post('/bookings', {
         showId,
         seats: seatDetails
       })
 
-      const booking = response.data.booking
-      console.log('Booking created:', booking)
-
-      // Store booking data in localStorage for payment page
-      localStorage.setItem('currentBooking', JSON.stringify(booking))
-
-      // Navigate to payment page
+      localStorage.setItem('currentBooking', JSON.stringify(response.data.booking))
       navigate('/payment')
     } catch (error) {
       console.error('Error creating booking:', error)
@@ -88,80 +81,78 @@ const SeatSelection = () => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="container mx-auto px-4 py-8">
-        {/* Screen */}
-        <div className="text-center mb-8">
-          <div className="bg-gray-400 h-2 w-3/4 mx-auto rounded-t-lg" />
-          <div className="text-gray-600 font-medium mt-2">SCREEN</div>
+    <main className="min-h-screen bg-zinc-950 pb-40 text-white">
+      <div className="container py-8">
+        <div className="mb-8 text-center">
+          <div className="mx-auto h-2 w-3/4 rounded-t-lg bg-white/30" />
+          <div className="mt-2 text-sm font-bold uppercase text-zinc-500">Screen</div>
         </div>
 
-        {/* Seat Map */}
-        <div className="grid grid-cols-8 gap-2 mb-8 mx-auto max-w-2xl">
-          {seats.map((seat) => (
-            <button
-              key={seat.seatNumber}
-              onClick={() => toggleSeat(seat)}
-              disabled={seat.status !== 'available'}
-              className={`
-                w-8 h-8 rounded text-xs font-medium flex items-center justify-center
-                ${seat.status === 'available'
-                  ? selectedSeats.includes(seat.seatNumber)
-                    ? 'bg-green-500 text-white'
-                    : 'bg-white border border-gray-300 hover:border-primary-500'
-                  : seat.status === 'booked'
-                  ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                  : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-                }
-              `}
-            >
-              {seat.seatNumber}
-            </button>
-          ))}
+        <div className="mx-auto mb-8 grid max-w-2xl grid-cols-8 gap-2 rounded-3xl border border-white/10 bg-white/[0.03] p-4">
+          {seats.map((seat) => {
+            const selected = selectedSeats.includes(seat.seatNumber)
+            return (
+              <button
+                key={seat.seatNumber}
+                onClick={() => toggleSeat(seat)}
+                disabled={seat.status !== 'available'}
+                className={`flex h-8 w-8 items-center justify-center rounded-lg text-xs font-bold transition ${
+                  seat.status === 'available'
+                    ? selected
+                      ? 'bg-emerald-500 text-white'
+                      : 'border border-white/10 bg-white/[0.08] text-zinc-200 hover:border-rose-300'
+                    : seat.status === 'booked'
+                      ? 'cursor-not-allowed bg-zinc-800 text-zinc-600'
+                      : 'cursor-not-allowed bg-zinc-900 text-zinc-600'
+                }`}
+              >
+                {seat.seatNumber}
+              </button>
+            )
+          })}
         </div>
 
-        {/* Legend */}
-        <div className="flex justify-center gap-6 mb-8">
+        <div className="mb-8 flex justify-center gap-6 text-zinc-300">
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-white border border-gray-300 rounded" />
+            <div className="h-4 w-4 rounded border border-white/10 bg-white/[0.08]" />
             <span className="text-sm">Available</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-green-500 rounded" />
+            <div className="h-4 w-4 rounded bg-emerald-500" />
             <span className="text-sm">Selected</span>
           </div>
           <div className="flex items-center gap-2">
-            <div className="w-4 h-4 bg-gray-300 rounded" />
+            <div className="h-4 w-4 rounded bg-zinc-800" />
             <span className="text-sm">Booked</span>
           </div>
         </div>
 
-        {/* Order Summary */}
-        <div className="bg-white rounded-lg p-6 shadow-lg fixed bottom-0 left-0 right-0">
-          <div className="container mx-auto max-w-4xl">
-            <div className="flex justify-between items-center">
+        <div className="fixed bottom-0 left-0 right-0 border-t border-white/10 bg-zinc-950/95 p-4 shadow-2xl backdrop-blur">
+          <div className="container max-w-4xl">
+            <div className="flex items-center justify-between gap-4">
               <div>
-                <h3 className="font-semibold">Selected Seats</h3>
-                <p className="text-gray-600">
+                <h3 className="font-semibold">Selected seats</h3>
+                <p className="text-sm text-zinc-400">
                   {selectedSeats.join(', ') || 'No seats selected'}
                 </p>
               </div>
 
               <div className="text-right">
-                <div className="text-2xl font-bold">₹{calculateTotal()}</div>
+                <div className="text-2xl font-black">INR {calculateTotal()}</div>
                 <button
                   disabled={selectedSeats.length === 0 || loading}
                   onClick={handleProceedToPay}
-                  className="bg-primary-600 text-white px-8 py-3 rounded-lg font-semibold hover:bg-primary-700 disabled:bg-gray-300"
+                  className="mt-2 inline-flex items-center justify-center gap-2 rounded-full bg-white px-6 py-3 font-bold text-zinc-950 hover:bg-zinc-200 disabled:bg-zinc-700 disabled:text-zinc-400"
                 >
-                  {loading ? 'Creating Booking...' : 'Proceed to Pay'}
+                  {loading && <Loader2 className="h-4 w-4 animate-spin" />}
+                  {loading ? 'Creating booking' : 'Proceed to pay'}
                 </button>
               </div>
             </div>
           </div>
         </div>
       </div>
-    </div>
+    </main>
   )
 }
 

@@ -1,7 +1,7 @@
 const Booking = require('../models/Booking');
 const Show = require('../models/Show');
 const Payment = require('../models/Payment');
-const { sendBookingConfirmation } = require('../utils/emailService');
+const { sendCancellationEmail } = require('../utils/emailService');
 
 // Create new booking
 const createBooking = async (req, res) => {
@@ -95,14 +95,6 @@ const createBooking = async (req, res) => {
     await show.save();
     await booking.save();
 
-    await sendBookingConfirmation(
-      req.user,
-      booking,
-      show,
-      show.movie,
-      show.theatre
-    );
-
     res.status(201).json({
       message: 'Booking created successfully',
       booking,
@@ -146,6 +138,30 @@ const getBookings = async (req, res) => {
     });
   } catch (error) {
     console.error('Get bookings error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
+// Get a single user booking
+const getBookingById = async (req, res) => {
+  try {
+    const booking = await Booking.findById(req.params.id)
+      .populate('movie', 'title poster')
+      .populate('theatre', 'name address')
+      .populate('show', 'date showTime language format')
+      .populate('user', 'firstName lastName email phone');
+
+    if (!booking) {
+      return res.status(404).json({ message: 'Booking not found' });
+    }
+
+    if (booking.user._id.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    res.json({ booking });
+  } catch (error) {
+    console.error('Get booking error:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -194,8 +210,11 @@ const cancelBooking = async (req, res) => {
     // Release seats back to available
     const show = await Show.findById(booking.show);
     const seatNumbers = booking.seats.map(seat => seat.seatNumber);
-    show.releaseSeats(seatNumbers);
-    await show.save();
+    if (show) {
+      show.releaseSeats(seatNumbers);
+      show.bookedSeats = show.bookedSeats.filter(seat => !seatNumbers.includes(seat));
+      await show.save();
+    }
 
     // Update booking status
     booking.status = 'cancelled';
@@ -219,7 +238,6 @@ const cancelBooking = async (req, res) => {
 
     // Send cancellation email
     try {
-      const { sendCancellationEmail } = require('../utils/emailService');
       await sendCancellationEmail(
         booking.user,
         booking,
@@ -467,6 +485,7 @@ const downloadBookingPDF = async (req, res) => {
 module.exports = {
   createBooking,
   getBookings,
+  getBookingById,
   cancelBooking,
   downloadBookingPDF
 };

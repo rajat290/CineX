@@ -16,7 +16,7 @@ export const bookingService = {
   // Get booking by ID
   getBookingById: async (bookingId: string) => {
     const response = await api.get(`/bookings/${bookingId}`)
-    return response.data
+    return response.data.booking
   },
 
   // Cancel booking

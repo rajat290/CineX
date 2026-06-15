@@ -13,7 +13,8 @@ const getMovies = async (req, res) => {
       status = 'running',
       page = 1, 
       limit = 20,
-      search 
+      search,
+      q
     } = req.query;
 
     // Build query
@@ -40,8 +41,9 @@ const getMovies = async (req, res) => {
     }
 
     // Search filter
-    if (search) {
-      query.$text = { $search: search };
+    const searchTerm = search || q;
+    if (searchTerm) {
+      query.title = { $regex: searchTerm, $options: 'i' };
     }
 
     let movies;

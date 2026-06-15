@@ -10,6 +10,6 @@ router.post('/create-order', auth, createOrder);
 router.post('/verify', auth, verifyPayment);
 
 // POST /api/payments/webhook - Razorpay webhook
-router.post('/webhook', express.raw({ type: 'application/json' }), webhook);
+router.post('/webhook', webhook);
 
 module.exports = router;

@@ -3,7 +3,7 @@ const Booking = require('../models/Booking');
 const Payment = require('../models/Payment');
 const Show = require('../models/Show');
 const razorpay = require('../config/razorpay');
-const { sendPaymentFailedEmail } = require('../utils/emailService');
+const { sendBookingConfirmation, sendPaymentFailedEmail } = require('../utils/emailService');
 
 // Create Razorpay order
 const createOrder = async (req, res) => {
@@ -103,6 +103,10 @@ const verifyPayment = async (req, res) => {
   try {
     const { orderId, paymentId, signature } = req.body;
 
+    if (!orderId || !paymentId || !signature) {
+      return res.status(400).json({ message: 'Order ID, payment ID and signature are required' });
+    }
+
     // Verify signature
     const generatedSignature = crypto
       .createHmac('sha256', process.env.RAZORPAY_KEY_SECRET)
@@ -114,10 +118,37 @@ const verifyPayment = async (req, res) => {
     }
 
     // Update booking and payment status
-    const booking = await Booking.findOne({ razorpayOrderId: orderId });
+    const booking = await Booking.findOne({ razorpayOrderId: orderId })
+      .populate('movie')
+      .populate('theatre');
     if (!booking) {
       return res.status(404).json({ message: 'Booking not found' });
     }
+
+    if (booking.user.toString() !== req.user._id.toString()) {
+      return res.status(403).json({ message: 'Access denied' });
+    }
+
+    if (booking.paymentStatus === 'completed') {
+      return res.json({
+        message: 'Payment verified successfully',
+        booking: {
+          id: booking._id,
+          bookingId: booking.bookingId,
+          status: booking.status,
+          paymentStatus: booking.paymentStatus
+        }
+      });
+    }
+
+    // Confirm seat booking
+    const show = await Show.findById(booking.show);
+    if (!show) {
+      return res.status(404).json({ message: 'Show not found' });
+    }
+    const seatNumbers = booking.seats.map(seat => seat.seatNumber);
+    show.bookSeats(seatNumbers);
+    await show.save();
 
     booking.paymentStatus = 'completed';
     booking.status = 'confirmed';
@@ -128,18 +159,18 @@ const verifyPayment = async (req, res) => {
     // Update payment record
     await Payment.findOneAndUpdate(
       { orderId },
-      { 
+      {
         paymentId,
         status: 'paid',
         gatewayResponse: req.body
       }
     );
 
-    // Confirm seat booking
-    const show = await Show.findById(booking.show);
-    const seatNumbers = booking.seats.map(seat => seat.seatNumber);
-    show.bookSeats(seatNumbers);
-    await show.save();
+    try {
+      await sendBookingConfirmation(req.user, booking, show, booking.movie, booking.theatre);
+    } catch (emailError) {
+      console.error('Booking confirmation email failed:', emailError);
+    }
 
     res.json({ 
       message: 'Payment verified successfully', 
@@ -163,16 +194,21 @@ const webhook = async (req, res) => {
     const webhookSecret = process.env.RAZORPAY_WEBHOOK_SECRET;
     
     // Verify webhook signature
+    if (!webhookSecret) {
+      return res.status(500).json({ message: 'Webhook secret is not configured' });
+    }
+
+    const rawBody = Buffer.isBuffer(req.body) ? req.body : Buffer.from(JSON.stringify(req.body));
     const generatedSignature = crypto
       .createHmac('sha256', webhookSecret)
-      .update(req.body)
+      .update(rawBody)
       .digest('hex');
 
     if (generatedSignature !== signature) {
       return res.status(400).json({ message: 'Invalid webhook signature' });
     }
 
-    const event = JSON.parse(req.body);
+    const event = JSON.parse(rawBody.toString('utf8'));
     
     switch (event.event) {
       case 'payment.captured':
@@ -202,19 +238,49 @@ const webhook = async (req, res) => {
 async function handleSuccessfulPayment(event) {
   const { order_id, payment_id } = event.payload.payment.entity;
   
-  const booking = await Booking.findOne({ razorpayOrderId: order_id });
+  const booking = await Booking.findOne({ razorpayOrderId: order_id })
+    .populate('user')
+    .populate('movie')
+    .populate('theatre');
   if (booking) {
+    if (booking.paymentStatus === 'completed') {
+      return;
+    }
+
+    const show = await Show.findById(booking.show);
+    if (show) {
+      const seatNumbers = booking.seats.map(seat => seat.seatNumber);
+      show.bookSeats(seatNumbers);
+      await show.save();
+    }
+
     booking.paymentStatus = 'completed';
     booking.status = 'confirmed';
     booking.razorpayPaymentId = payment_id;
     await booking.save();
+
+    await Payment.findOneAndUpdate(
+      { orderId: order_id },
+      { paymentId: payment_id, status: 'paid', gatewayResponse: event.payload.payment.entity }
+    );
+
+    if (show) {
+      try {
+        await sendBookingConfirmation(booking.user, booking, show, booking.movie, booking.theatre);
+      } catch (emailError) {
+        console.error('Booking confirmation email failed:', emailError);
+      }
+    }
   }
 }
 
 async function handleFailedPayment(event) {
   const { order_id } = event.payload.payment.entity;
   
-  const booking = await Booking.findOne({ razorpayOrderId: order_id });
+  const booking = await Booking.findOne({ razorpayOrderId: order_id })
+    .populate('user')
+    .populate('movie')
+    .populate('theatre');
   if (booking) {
     booking.paymentStatus = 'failed';
     booking.status = 'cancelled';
@@ -222,8 +288,10 @@ async function handleFailedPayment(event) {
     // Release seats
     const show = await Show.findById(booking.show);
     const seatNumbers = booking.seats.map(seat => seat.seatNumber);
-    show.releaseSeats(seatNumbers);
-    await show.save();
+    if (show) {
+      show.releaseSeats(seatNumbers);
+      await show.save();
+    }
     await booking.save();
 
     // Send payment failed email
