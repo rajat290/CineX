@@ -1,5 +1,16 @@
 const Show = require('../models/Show');
 const Theatre = require('../models/Theatre');
+const SeatHold = require('../models/SeatHold');
+
+const buildSeatDetails = (show, seats) => {
+  return seats.map(seat => {
+    const seatNumber = typeof seat === 'string' ? seat : seat.seatNumber;
+    const seatType = typeof seat === 'string' ? 'regular' : seat.seatType;
+    const price = show.pricing.find(item => item.seatType === seatType)?.price || 0;
+
+    return { seatNumber, seatType, price };
+  });
+};
 
 // Get seat availability for a show
 const getSeats = async (req, res) => {
@@ -69,11 +80,20 @@ const blockSeats = async (req, res) => {
       return res.status(404).json({ message: 'Show not found' });
     }
 
-    const blockedSeats = show.blockSeats(seats, timeoutMinutes);
+    const seatNumbers = seats.map(seat => typeof seat === 'string' ? seat : seat.seatNumber);
+    const blockedSeats = show.blockSeats(seatNumbers, timeoutMinutes);
     await show.save();
+
+    const hold = await SeatHold.create({
+      user: req.user._id,
+      show: show._id,
+      seats: buildSeatDetails(show, seats),
+      expiresAt: new Date(Date.now() + timeoutMinutes * 60000)
+    });
 
     res.json({
       message: 'Seats blocked successfully',
+      holdId: hold._id,
       blockedSeats,
       expiresIn: timeoutMinutes * 60 // seconds
     });
@@ -83,10 +103,28 @@ const blockSeats = async (req, res) => {
   }
 };
 
+// Get active holds for current user
+const getMySeatHolds = async (req, res) => {
+  try {
+    const holds = await SeatHold.find({
+      user: req.user._id,
+      status: 'active',
+      expiresAt: { $gt: new Date() }
+    })
+      .populate('show', 'date showTime language format')
+      .sort({ expiresAt: 1 });
+
+    res.json({ holds });
+  } catch (error) {
+    console.error('Get seat holds error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 // Release blocked seats
 const releaseSeats = async (req, res) => {
   try {
-    const { seats } = req.body;
+    const { seats, holdId } = req.body;
     
     const show = await Show.findById(req.params.showId);
     if (!show) {
@@ -95,6 +133,13 @@ const releaseSeats = async (req, res) => {
 
     show.releaseSeats(seats);
     await show.save();
+
+    if (holdId) {
+      await SeatHold.findOneAndUpdate(
+        { _id: holdId, user: req.user._id, show: show._id, status: 'active' },
+        { status: 'released' }
+      );
+    }
 
     res.json({ message: 'Seats released successfully', releasedSeats: seats });
   } catch (error) {
@@ -106,5 +151,6 @@ const releaseSeats = async (req, res) => {
 module.exports = {
   getSeats,
   blockSeats,
+  getMySeatHolds,
   releaseSeats
 };

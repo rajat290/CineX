@@ -2,8 +2,43 @@ const crypto = require('crypto');
 const Booking = require('../models/Booking');
 const Payment = require('../models/Payment');
 const Show = require('../models/Show');
+const Wallet = require('../models/Wallet');
 const razorpay = require('../config/razorpay');
 const { sendBookingConfirmation, sendPaymentFailedEmail } = require('../utils/emailService');
+const { signTicketPayload } = require('../utils/ticketToken');
+
+const finalizeConfirmedBooking = async (booking, userId) => {
+  booking.paymentStatus = 'completed';
+  booking.status = 'confirmed';
+  booking.ticketToken = signTicketPayload({
+    bookingId: booking._id.toString(),
+    bookingCode: booking.bookingId,
+    userId: booking.user.toString(),
+    showId: booking.show.toString()
+  });
+  booking.qrCode = booking.ticketToken;
+  await booking.save();
+
+  if (booking.loyaltyPointsEarned > 0) {
+    await Wallet.findOneAndUpdate(
+      { user: userId || booking.user },
+      {
+        $inc: { loyaltyPoints: booking.loyaltyPointsEarned },
+        $push: {
+          transactions: {
+            type: 'loyalty_credit',
+            amount: 0,
+            points: booking.loyaltyPointsEarned,
+            reason: 'Booking reward',
+            referenceType: 'booking',
+            referenceId: booking._id
+          }
+        }
+      },
+      { upsert: true, new: true }
+    );
+  }
+};
 
 // Create Razorpay order
 const createOrder = async (req, res) => {
@@ -150,11 +185,9 @@ const verifyPayment = async (req, res) => {
     show.bookSeats(seatNumbers);
     await show.save();
 
-    booking.paymentStatus = 'completed';
-    booking.status = 'confirmed';
     booking.razorpayPaymentId = paymentId;
     booking.razorpaySignature = signature;
-    await booking.save();
+    await finalizeConfirmedBooking(booking, req.user._id);
 
     // Update payment record
     await Payment.findOneAndUpdate(
@@ -254,10 +287,8 @@ async function handleSuccessfulPayment(event) {
       await show.save();
     }
 
-    booking.paymentStatus = 'completed';
-    booking.status = 'confirmed';
     booking.razorpayPaymentId = payment_id;
-    await booking.save();
+    await finalizeConfirmedBooking(booking, booking.user._id);
 
     await Payment.findOneAndUpdate(
       { orderId: order_id },

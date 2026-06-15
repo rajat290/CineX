@@ -2,7 +2,7 @@ const TrendingItem = require('../models/TrendingItem');
 const RecentSearch = require('../models/RecentSearch');
 const Category = require('../models/Category');
 const Movie = require('../models/Movie');
-const User = require('../models/User');
+const Experience = require('../models/Experience');
 
 // Get trending items
 exports.getTrendingItems = async (req, res) => {
@@ -75,7 +75,23 @@ exports.search = async (req, res) => {
       results = results.concat(movies.map(m => ({ type: 'movie', data: m })));
     }
 
-    // TODO: Add search for other types like events, plays, sports, etc.
+    if (!type || ['event', 'play', 'sport', 'activity', 'experience'].includes(type)) {
+      const experienceQuery = {
+        title: { $regex: query, $options: 'i' },
+        isActive: true,
+        status: 'published'
+      };
+
+      if (type && type !== 'experience') {
+        experienceQuery.type = type;
+      }
+
+      const experiences = await Experience.find(experienceQuery).limit(20);
+      results = results.concat(experiences.map(experience => ({
+        type: experience.type,
+        data: experience
+      })));
+    }
 
     res.json(results);
   } catch (error) {

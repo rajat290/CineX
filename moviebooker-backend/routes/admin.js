@@ -4,7 +4,10 @@ const Theatre = require('../models/Theatre');
 const Show = require('../models/Show');
 const Booking = require('../models/Booking');
 const User = require('../models/User');
+const Experience = require('../models/Experience');
+const Offer = require('../models/Offer');
 const adminAuth = require('../middleware/adminAuth');
+const { expirePendingBookings } = require('../controllers/operationsController');
 const router = express.Router();
 
 // GET /api/admin/dashboard - Admin dashboard stats
@@ -101,6 +104,63 @@ router.post('/shows', adminAuth, async (req, res) => {
     const show = new Show(req.body);
     await show.save();
     res.status(201).json(show);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.post('/operations/expire-pending-bookings', adminAuth, expirePendingBookings);
+
+// EXPERIENCE MANAGEMENT
+router.post('/experiences', adminAuth, async (req, res) => {
+  try {
+    const experience = new Experience(req.body);
+    await experience.save();
+    res.status(201).json(experience);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.put('/experiences/:id', adminAuth, async (req, res) => {
+  try {
+    const experience = await Experience.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true
+    });
+    res.json(experience);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.delete('/experiences/:id', adminAuth, async (req, res) => {
+  try {
+    await Experience.findByIdAndUpdate(req.params.id, { isActive: false });
+    res.json({ message: 'Experience disabled successfully' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// OFFER MANAGEMENT
+router.post('/offers', adminAuth, async (req, res) => {
+  try {
+    const offer = new Offer(req.body);
+    await offer.save();
+    res.status(201).json(offer);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+router.put('/offers/:id', adminAuth, async (req, res) => {
+  try {
+    const offer = await Offer.findByIdAndUpdate(req.params.id, req.body, {
+      new: true,
+      runValidators: true
+    });
+    res.json(offer);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

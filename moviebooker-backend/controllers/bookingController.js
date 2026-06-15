@@ -1,12 +1,15 @@
 const Booking = require('../models/Booking');
 const Show = require('../models/Show');
 const Payment = require('../models/Payment');
+const SeatHold = require('../models/SeatHold');
+const Offer = require('../models/Offer');
+const Wallet = require('../models/Wallet');
 const { sendCancellationEmail } = require('../utils/emailService');
 
 // Create new booking
 const createBooking = async (req, res) => {
   try {
-    const { showId, seats } = req.body;
+    const { showId, seats, holdId, offerCode } = req.body;
 
     // Validate input
     if (!showId || !seats || !Array.isArray(seats) || seats.length === 0) {
@@ -36,13 +39,31 @@ const createBooking = async (req, res) => {
       return res.status(404).json({ message: 'Show not found' });
     }
 
+    let seatHold = null;
+    let requestedSeats = seats.map(seat => seat.seatNumber);
+
+    if (holdId) {
+      seatHold = await SeatHold.findOne({
+        _id: holdId,
+        user: req.user._id,
+        show: show._id,
+        status: 'active',
+        expiresAt: { $gt: new Date() }
+      });
+
+      if (!seatHold) {
+        return res.status(400).json({ message: 'Seat hold is invalid or expired' });
+      }
+
+      requestedSeats = seatHold.seats.map(seat => seat.seatNumber);
+    }
+
     // Check seat availability
     const availableSeats = show.getAvailableSeats();
-    const requestedSeats = seats.map(seat => seat.seatNumber);
 
-    const unavailableSeats = requestedSeats.filter(seat =>
-      !availableSeats.includes(seat)
-    );
+    const unavailableSeats = holdId
+      ? []
+      : requestedSeats.filter(seat => !availableSeats.includes(seat));
 
     if (unavailableSeats.length > 0) {
       return res.status(400).json({
@@ -53,7 +74,7 @@ const createBooking = async (req, res) => {
 
     // Calculate pricing
     let totalAmount = 0;
-    const seatDetails = seats.map(seat => {
+    const seatDetails = (seatHold?.seats || seats).map(seat => {
       const seatPrice = show.pricing.find(p => p.seatType === seat.seatType)?.price || 0;
       totalAmount += seatPrice;
       return {
@@ -66,7 +87,26 @@ const createBooking = async (req, res) => {
     // Add convenience fee and tax (example: 10% convenience fee + 18% GST)
     const convenienceFee = Math.round(totalAmount * 0.10);
     const tax = Math.round((totalAmount + convenienceFee) * 0.18);
-    const finalAmount = totalAmount + convenienceFee + tax;
+    let discount = 0;
+    let appliedOffer = null;
+
+    if (offerCode) {
+      appliedOffer = await Offer.findOne({
+        code: offerCode.toUpperCase(),
+        isActive: true,
+        validFrom: { $lte: new Date() },
+        validUntil: { $gte: new Date() }
+      });
+
+      if (!appliedOffer) {
+        return res.status(400).json({ message: 'Offer is invalid or expired' });
+      }
+
+      discount = appliedOffer.calculateDiscount(totalAmount + convenienceFee + tax);
+    }
+
+    const finalAmount = totalAmount + convenienceFee + tax - discount;
+    const loyaltyPointsEarned = Math.floor(finalAmount / 100);
 
     // Generate bookingId explicitly
     const count = await Booking.countDocuments();
@@ -79,10 +119,16 @@ const createBooking = async (req, res) => {
       show: showId,
       movie: show.movie._id,
       theatre: show.theatre._id,
+      seatHold: seatHold?._id,
+      bookingType: 'movie',
       seats: seatDetails,
       totalAmount,
       convenienceFee,
       tax,
+      discount,
+      offer: appliedOffer?._id,
+      offerCode: appliedOffer?.code,
+      loyaltyPointsEarned,
       finalAmount,
       showDate: show.date,
       showTime: show.showTime,
@@ -90,10 +136,23 @@ const createBooking = async (req, res) => {
       paymentStatus: 'pending'
     });
 
-    // Temporarily block seats
-    show.blockSeats(requestedSeats, 10); // 10 minutes timeout
-    await show.save();
+    if (!seatHold) {
+      show.blockSeats(requestedSeats, 10);
+      await show.save();
+    }
+
     await booking.save();
+
+    if (seatHold) {
+      seatHold.status = 'converted';
+      seatHold.convertedBooking = booking._id;
+      await seatHold.save();
+    }
+
+    if (appliedOffer) {
+      appliedOffer.usageCount += 1;
+      await appliedOffer.save();
+    }
 
     res.status(201).json({
       message: 'Booking created successfully',
@@ -222,6 +281,27 @@ const cancelBooking = async (req, res) => {
     booking.paymentStatus = 'refunded';
     booking.refundAmount = booking.finalAmount * 0.8; // 80% refund
     await booking.save();
+
+    await Wallet.findOneAndUpdate(
+      { user: req.user._id },
+      {
+        $inc: { balance: booking.refundAmount },
+        $push: {
+          transactions: {
+            type: 'refund',
+            amount: booking.refundAmount,
+            reason: reason || 'Booking cancellation refund',
+            referenceType: 'booking',
+            referenceId: booking._id
+          }
+        }
+      },
+      { upsert: true, new: true }
+    );
+
+    if (booking.seatHold) {
+      await SeatHold.findByIdAndUpdate(booking.seatHold, { status: 'released' });
+    }
 
     // Update payment record
     await Payment.findOneAndUpdate(

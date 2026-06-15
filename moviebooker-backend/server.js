@@ -18,6 +18,9 @@ const paymentRoutes = require('./routes/payments');
 const userRoutes = require('./routes/users');
 const adminRoutes = require('./routes/admin');
 const searchRoutes = require('./routes/searchRoutes');
+const discoveryRoutes = require('./routes/discovery');
+const offerRoutes = require('./routes/offers');
+const ticketRoutes = require('./routes/tickets');
 
 const app = express();
 
@@ -52,6 +55,9 @@ app.use('/api/payments', paymentRoutes);
 app.use('/api/users', userRoutes);
 app.use('/api/admin', adminRoutes);
 app.use('/api/search', searchRoutes);
+app.use('/api/discovery', discoveryRoutes);
+app.use('/api/offers', offerRoutes);
+app.use('/api/tickets', ticketRoutes);
 
 // Health check
 app.get('/api/health', (req, res) => {

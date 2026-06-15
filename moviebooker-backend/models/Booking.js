@@ -31,10 +31,25 @@ const bookingSchema = new mongoose.Schema({
     seatType: { type: String, required: true },
     price: { type: Number, required: true }
   }],
+  seatHold: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'SeatHold'
+  },
+  bookingType: {
+    type: String,
+    enum: ['movie', 'event', 'play', 'sport', 'activity'],
+    default: 'movie'
+  },
   totalAmount: { type: Number, required: true },
   convenienceFee: { type: Number, default: 0 },
   tax: { type: Number, default: 0 },
   discount: { type: Number, default: 0 },
+  offer: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Offer'
+  },
+  offerCode: { type: String },
+  loyaltyPointsEarned: { type: Number, default: 0 },
   finalAmount: { type: Number, required: true },
   bookingDate: { type: Date, default: Date.now },
   showDate: { type: Date, required: true },
@@ -52,7 +67,17 @@ const bookingSchema = new mongoose.Schema({
   razorpayOrderId: { type: String },
   razorpayPaymentId: { type: String },
   razorpaySignature: { type: String },
-  qrCode: { type: String }, // QR code for ticket
+  ticketToken: { type: String },
+  qrCode: { type: String }, // QR code/token for ticket validation
+  checkIn: {
+    status: {
+      type: String,
+      enum: ['not_checked_in', 'checked_in'],
+      default: 'not_checked_in'
+    },
+    checkedInAt: { type: Date },
+    checkedInBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User' }
+  },
   cancellationReason: { type: String },
   refundAmount: { type: Number }
 }, {
