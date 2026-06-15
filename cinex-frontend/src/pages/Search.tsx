@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react';
-import axios from 'axios';
+import { useEffect, useState } from 'react';
+import { api } from '../services/api';
 
 const categories = ['Movies', 'Stream', 'Events', 'Plays', 'Sports', 'Activities'];
 
@@ -25,8 +25,8 @@ interface Category {
 }
 
 const Search = () => {
-  const [location, setLocation] = useState<string>('Mumbai');
-  const [area, setArea] = useState<string>('Select Area');
+  const [location] = useState<string>('Mumbai');
+  const [area] = useState<string>('Select Area');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedCategory, setSelectedCategory] = useState<string>('Movies');
   const [trendingItems, setTrendingItems] = useState<TrendingItem[]>([]);
@@ -41,7 +41,7 @@ const Search = () => {
 
   const fetchTrending = async () => {
     try {
-      const res = await axios.get('/api/search/trending');
+      const res = await api.get('/search/trending');
       if (Array.isArray(res.data)) {
         setTrendingItems(res.data);
       } else {
@@ -56,7 +56,7 @@ const Search = () => {
 
   const fetchRecentSearches = async () => {
     try {
-      const res = await axios.get('/api/search/recent');
+      const res = await api.get('/search/recent');
       if (Array.isArray(res.data)) {
         setRecentSearches(res.data);
       } else {
@@ -71,7 +71,7 @@ const Search = () => {
 
   const fetchCategories = async () => {
     try {
-      const res = await axios.get('/api/search/categories');
+      const res = await api.get('/search/categories');
       if (Array.isArray(res.data)) {
         setBrowseCategories(res.data);
       } else {

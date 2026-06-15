@@ -1,26 +1,8 @@
 import { useParams, useNavigate } from 'react-router-dom'
 import { useEffect, useState } from 'react'
-import { MapPin, Clock } from 'lucide-react'
+import { MapPin } from 'lucide-react'
 import { showService } from '../services/showService'
 import { useLocationStore } from '../stores/locationStore'
-
-interface Theatre {
-  _id: string
-  name: string
-  address: {
-    area: string
-    city: string
-  }
-  shows: Show[]
-}
-
-interface Show {
-  _id?: string
-  id?: string
-  showTime: string
-  format: string
-  pricing?: Array<{ price: number }>
-}
 
 const Theatres = () => {
   const { movieId } = useParams()

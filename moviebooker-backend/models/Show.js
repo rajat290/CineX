@@ -69,6 +69,9 @@ const showSchema = new mongoose.Schema({
 
 // Method to get available seats
 showSchema.methods.getAvailableSeats = function() {
+  const now = new Date();
+  this.blockedSeats = (this.blockedSeats || []).filter(bs => !bs.expiresAt || bs.expiresAt > now);
+
   const allSeats = this.availableSeats || [];
   const booked = this.bookedSeats || [];
   const blocked = this.blockedSeats.map(bs => bs.seat);
@@ -83,8 +86,8 @@ showSchema.methods.blockSeats = function(seats, timeoutMinutes = 5) {
   const availableSeats = this.getAvailableSeats();
   const seatsToBlock = seats.filter(seat => availableSeats.includes(seat));
   
-  if (seatsToBlock.length === 0) {
-    throw new Error('No seats available to block');
+  if (seatsToBlock.length !== seats.length) {
+    throw new Error('Some seats are not available to block');
   }
   
   const now = new Date();
@@ -107,6 +110,7 @@ showSchema.methods.releaseSeats = function(seats) {
 
 // Method to book seats (convert blocked to booked)
 showSchema.methods.bookSeats = function(seats) {
+  this.getAvailableSeats();
   const blockedSeats = this.blockedSeats.map(bs => bs.seat);
   const seatsToBook = seats.filter(seat => blockedSeats.includes(seat));
   
@@ -114,7 +118,9 @@ showSchema.methods.bookSeats = function(seats) {
     throw new Error('Some seats are not blocked or already booked');
   }
   
-  this.bookedSeats.push(...seatsToBook);
+  const existingBookedSeats = new Set(this.bookedSeats || []);
+  seatsToBook.forEach(seat => existingBookedSeats.add(seat));
+  this.bookedSeats = Array.from(existingBookedSeats);
   this.releaseSeats(seatsToBook);
   return seatsToBook;
 };
@@ -124,6 +130,5 @@ showSchema.index({ movie: 1, theatre: 1 });
 showSchema.index({ date: 1, showTime: 1 });
 showSchema.index({ theatre: 1, date: 1 });
 showSchema.index({ status: 1 });
-showSchema.index({ 'blockedSeats.expiresAt': 1 }, { expireAfterSeconds: 0 });
 
 module.exports = mongoose.model('Show', showSchema);

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react'
-import { useParams, useNavigate } from 'react-router-dom'
+import { useNavigate } from 'react-router-dom'
 import { paymentService } from '../services/paymentService'
 
 declare global {
@@ -9,7 +9,6 @@ declare global {
 }
 
 const Payment = () => {
-  const { showId } = useParams()
   const navigate = useNavigate()
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState<string | null>(null)

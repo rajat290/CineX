@@ -1,6 +1,7 @@
 import { CheckCircle, Download, QrCode, Home } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { bookingService } from '../services/bookingService'
 
 const Confirmation = () => {
   const navigate = useNavigate()
@@ -14,9 +15,18 @@ const Confirmation = () => {
     }
   }, [])
 
-  const handleDownload = () => {
-    // TODO: Implement ticket download functionality
-    alert('Download functionality will be implemented')
+  const handleDownload = async () => {
+    if (!bookingData?._id) return
+
+    const pdfBlob = await bookingService.downloadBookingPDF(bookingData._id)
+    const url = window.URL.createObjectURL(pdfBlob)
+    const link = document.createElement('a')
+    link.href = url
+    link.download = `CineX-Ticket-${bookingData.bookingId}.pdf`
+    document.body.appendChild(link)
+    link.click()
+    link.remove()
+    window.URL.revokeObjectURL(url)
   }
 
   const handleHome = () => {

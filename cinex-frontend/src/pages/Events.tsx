@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import { useState } from "react";
 import { Calendar, MapPin, Clock, Users, Filter, TrendingUp } from "lucide-react";
 
 import { Button } from "../components/ui/button";
@@ -83,16 +83,9 @@ const events = [
 const categories = ["All", "Music", "Comedy", "Food", "Conference", "Art", "Sports", "Theatre"];
 
 const Events = () => {
-  const [currentLocation, setCurrentLocation] = useState("Mumbai");
+  const [currentLocation] = useState("Mumbai");
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [activeTab, setActiveTab] = useState("upcoming");
-
-  const handleLocationClick = () => {
-    const locations = ["Mumbai", "Delhi", "Bangalore", "Chennai", "Kolkata"];
-    const currentIndex = locations.indexOf(currentLocation);
-    const nextIndex = (currentIndex + 1) % locations.length;
-    setCurrentLocation(locations[nextIndex]);
-  };
 
   const filteredEvents = events.filter(event => 
     selectedCategory === "All" || event.category === selectedCategory
